@@ -2,6 +2,12 @@
 """
 Spyder Editor
 
+Functionality I want:
+    clean up all this stuff
+    tell me we solved something - how many things did we solve via what?
+    is it ever the case that they tell us something from a subgroup that they didn't from the main group?'
+    show the percentage solved
+
 This is a temporary script file.
 """
 
@@ -20,13 +26,15 @@ INPUTS:
     
 "schoolevel1.csv"
 "schoolevel2.csv"
-
-
 "stateLevel.csv"
 
+ '[5] 2021-22 School Level PARCC and MSAA Data edited.xlsx'
 """
 
-
+def getNumberVariablesLeft(solved):
+    stuff=[ ''.join(filter(str.isalpha, str(i))) for i in list(solved.values())]
+    length=len(list(set([i for i in stuff if len(i)>0])))
+    return(length)
 
 def genCleanState(stateFile):
     """
@@ -46,11 +54,11 @@ def genCleanState(stateFile):
     stateData['Count']=stateData['Count'].astype(float)
     return(stateData) 
 
-def genCleanSchool(schoolFile):
+def genCleanSchool(schoolFile, tab):
     """
     This reads in a school data file, subsets it to just the rows we want, and returns that subset
     """
-    schoolData=pd.read_csv(schoolFile)
+    schoolData=pd.read_excel(schoolFile, tab)
     schoolDict={"Assessment Name": "PARCC",
            "Grade of Enrollment": "All",
            "Student group": "All"}
@@ -59,20 +67,20 @@ def genCleanSchool(schoolFile):
         subset=subset.loc[subset[item]==schoolDict[item]]
     return(subset)
 
-def cleanSchoolProficient(schoolProficientFile):
+def cleanSchoolProficient(schoolFile, schoolProficientTab):
     """
     This cleans the 'proficiency numbers by school file'
     """
-    schoolProficientData=genCleanSchool(schoolProficientFile)
+    schoolProficientData=genCleanSchool(schoolFile, schoolProficientTab)
     schoolProficientData['file']="Proficiency"
     colsToKeep=['School Name', 'Subject', 'Tested Grade/Subject', 'Count', 'Total Count', 'file', 'Percent']
     return(schoolProficientData[colsToKeep])
     
-def cleanSchoolLevels(schoolLevelFile):
+def cleanSchoolLevels(schoolFile, schoolLevelTab):
     """
     This cleans the 'level numbers by school file'
     """
-    schoolLevelData=genCleanSchool(schoolLevelFile)
+    schoolLevelData=genCleanSchool(schoolFile, schoolLevelTab)
     schoolLevelData['file']="All"
     colsToKeep=['School Name', 'Subject', 'Tested Grade/Subject', 'Metric Value', 'Count', 'Total Count', 'file', 'Percent']
     return(schoolLevelData[colsToKeep])
@@ -86,7 +94,7 @@ def fillDf(df):
     4) makes the count and total count fields into numbers
     
     """
-    df=df.loc[df['Subject']!="ELA"]
+    df=df.loc[df['Subject']=="ELA"]
     df=df.replace("n<10","DS")
     df=df.replace("<=10%", "DS")
     df=df.replace("DS",np.NaN)
@@ -125,6 +133,65 @@ def intermediate(subsetAll,subsetProf,  schoolName):
     return(boths)
 
 
+def replaceWithSymbols(df, mySymbols, number):
+    for i in range(0, len(df)):
+        if df['Count'].iloc[i]==-1:
+            df['Count'].iloc[i]=mySymbols[number]
+            number=number+1
+        if df['Total Count'].iloc[i]==-1:
+            df['Total Count'].iloc[i]=mySymbols[number]
+            number=number+1
+    if number==0:
+       print(f'no missings in {schoolName}')
+    return(df, mySymbols, number)
+ 
+    
+def whatIsThisDoing(df, number):
+    equationDict={}
+    number=0
+    for i in list(df['Metric File'].unique()):
+        # this is the sum of whatever metric we are looking at
+        totalMetric=df.loc[(df['Metric File']==i) & (df['Tested Grade/Subject']=="All")]['Count'].iloc[0]
+        # these are the disaggregated values
+        otherItems=df.loc[(df['Metric File']==i) & (df['Tested Grade/Subject']!="All")]
+        othervalues=otherItems['Count'].values
+        # here we're saying, the total metric is equal to the sum of the disaggregated values
+        myEquation=0
+        for j in range(0, len(othervalues)):
+            myEquation += othervalues[j]
+        # this adds an equation to the dictionary that's the sum of the individual piees equals the totalMetric
+        equationDict[number]= Eq((myEquation), totalMetric)
+        number=number+1
+    return(equationDict, number)
+
+def whatIsThisOtherThingDoing(df, equationDict, number):
+    for i in list(df['Grade file'].unique()):
+        if "Proficiency" not in i:
+            # here we're saying, the total count in the levels (non-proficiency file) is the sum of the individual counts
+            totalMetric=df.loc[df['Grade file']==i]['Total Count'].iloc[0]
+            othervalues=df.loc[(df['Grade file']==i)]['Count'].values
+            myEquation=0
+            for j in range(0, len(othervalues)):
+                myEquation += othervalues[j]
+            equationDict[number]= Eq((myEquation), totalMetric)
+            number=number+1
+    return(equationDict, number)
+
+def finalWhatThing(df, equationDict, number):
+    for i in list(df.loc[df['file']=="Proficiency"]['Tested Grade/Subject'].unique()):
+        # here we say: overall proficiency number is the sum of level 4 and 5
+        totalMetricsLine=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']==i)]
+        totalMetric=totalMetricsLine['Count'].iloc[0]
+        otherValues=df.loc[(df['file']!="Proficiency") & (df['Tested Grade/Subject']==i)]
+        otherValues=otherValues.loc[otherValues['Metric Value'].isin(["Performance Level 4", "Performance Level 5"])]['Count'].values
+        myEquation=0
+        for j in range(0, len(otherValues)):
+            myEquation += otherValues[j]
+        equationDict[number]= Eq((myEquation), totalMetric)
+        number=number+1
+    return(equationDict)
+
+
 def allsClean(df, schoolNumber):
     """
     
@@ -147,50 +214,10 @@ def allsClean(df, schoolNumber):
     df['Metric File']=df['Metric Value']+df['file']
     df['Grade file']=df['Tested Grade/Subject']+df['file']
     number=0
-    for i in range(0, len(df)):
-        if df['Count'].iloc[i]==-1:
-            df['Count'].iloc[i]=mySymbols[number]
-            number=number+1
-        if df['Total Count'].iloc[i]==-1:
-            df['Total Count'].iloc[i]=mySymbols[number]
-            number=number+1
-    if number==0:
-       print(f'no missings in {schoolName}')
-        
-    
-    equationDict={}
-    number=0
-    for i in list(df['Metric File'].unique()):
-        totalMetric=df.loc[(df['Metric File']==i) & (df['Tested Grade/Subject']=="All")]['Count'].iloc[0]
-        otherItems=df.loc[(df['Metric File']==i) & (df['Tested Grade/Subject']!="All")]
-        othervalues=otherItems['Count'].values
-        myEquation=0
-        for j in range(0, len(othervalues)):
-            myEquation += othervalues[j]
-        equationDict[number]= Eq((myEquation), totalMetric)
-        number=number+1
-    
-    for i in list(df['Grade file'].unique()):
-        if "Proficiency" not in i:
-            totalMetric=df.loc[df['Grade file']==i]['Total Count'].iloc[0]
-            othervalues=df.loc[(df['Grade file']==i)]['Count'].values
-            #print(othervalues)
-            myEquation=0
-            for j in range(0, len(othervalues)):
-                myEquation += othervalues[j]
-            equationDict[number]= Eq((myEquation), totalMetric)
-            number=number+1
-    
-    for i in list(df.loc[df['file']=="Proficiency"]['Tested Grade/Subject'].unique()):
-        totalMetricsLine=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']==i)]
-        totalMetric=totalMetricsLine['Count'].iloc[0]
-        otherValues=df.loc[(df['file']!="Proficiency") & (df['Tested Grade/Subject']==i)]
-        otherValues=otherValues.loc[otherValues['Metric Value'].isin(["Performance Level 4", "Performance Level 5"])]['Count'].values
-        myEquation=0
-        for j in range(0, len(otherValues)):
-            myEquation += otherValues[j]
-        equationDict[number]= Eq((myEquation), totalMetric)
-        number=number+1
+    df, mySymbols, number= replaceWithSymbols(df, mySymbols, number)
+    equationDict, number=whatIsThisDoing(df, number)
+    equationDict, number=whatIsThisOtherThingDoing(df, equationDict, number)
+    equationDict=finalWhatThing(df, equationDict, number)
     """
     subsetProf=df.loc[df['file']=="Proficiency"]
     totalMetric=subsetProf.loc[subsetProf['Tested Grade/Subject']=='All']['Total Count'].iloc[0]
@@ -224,6 +251,7 @@ def allForSchool(subsetAll,subsetProf, schoolName, schoolNumber):
 
     """
     boths=intermediate(subsetAll,subsetProf, schoolName)
+    initialBoths=boths[['Tested Grade/Subject', 'Metric Value', 'Count']]
     mySymbols, number, equationDict=allsClean(boths, schoolNumber)
     numberOfRealEquations=len([i for i in list(equationDict.values()) if i!=True])
     if numberOfRealEquations>0:
@@ -233,6 +261,8 @@ def allForSchool(subsetAll,subsetProf, schoolName, schoolNumber):
             toReplace=solved[item]
             try:
                 toReplace=int(toReplace)
+                #if schoolName=="Sela PCS":
+                #    print([schoolName, item, toReplace])
                 #print(toReplace)
                 # some of these are actually pretty big - like, bigger than 10
                 # so if we want to use this to say <10 for missings
@@ -244,6 +274,9 @@ def allForSchool(subsetAll,subsetProf, schoolName, schoolNumber):
         totalVars=len([i for i in list(solved.values())])
         unsolvedVars=len([i for i in list(solved.values()) if type(i)==sympy.core.add.Add])
         toAppend=[schoolName, totalVars, unsolvedVars]
+        numberUnsolved=getNumberVariablesLeft(solved)
+        #print(toAppend)
+        print([schoolName, numberUnsolved])
         #return(toAppend) ## OK there we go 
         boths['School Name']=schoolName 
         return(boths)
@@ -283,7 +316,7 @@ def testInitialComplete(subsetAll, subsetProf):
     byAll=bothsAll.loc[(bothsAll['file']=="All") & (bothsAll['Tested Grade/Subject']=="All")]
     uniqueTotal=byAll.groupby(['Tested Grade/Subject', 'School Name']).first()['Total Count']
     sumCount=sum([i for i in uniqueTotal.values if i!=-1])
-    print([sumCountLevel, sumCount])
+    #print([sumCountLevel, sumCount])
     # sumCOuntLevel is working, sumCount is not  -ot's overreporting
   
 
@@ -316,14 +349,15 @@ def getSymbols(otherValuesLine):
 
 os.chdir(r"C:\Users\aehaddad\Documents")
 
-schoolProficientFile="schoolevel2.csv"
-schoolLevelFile="schoolevel1.csv"
+schoolFile='[5] 2021-22 School Level PARCC and MSAA Data edited.xlsx'
+schoolProficientTab="Proficiency"
+schoolLevelTab="Performance Level"
 stateFile="stateLevel.csv" 
     
     
 stateData=genCleanState(stateFile)    
-subsetAll=cleanSchoolLevels(schoolLevelFile)
-subsetProf=cleanSchoolProficient(schoolProficientFile)
+subsetAll=cleanSchoolLevels(schoolFile, schoolLevelTab)
+subsetProf=cleanSchoolProficient(schoolFile, schoolProficientTab)
 testInitialComplete(subsetAll, subsetProf)
 schoolNames=list(subsetAll['School Name'].unique())
 fullListDF=[]
@@ -336,7 +370,7 @@ for schoolName in schoolNames:
         toAppend=[schoolName, "not broke", "not broke"] # this was supposed to be numbers
     except:
         toAppend=[schoolName, "broke", "broke"]
-        print(toAppend)
+        #print(toAppend)
     fullListDF.append(boths)
     fullList.append(toAppend)
     schoolNumber=schoolNumber+1
@@ -400,3 +434,80 @@ otherValues=otherValuesLine['Count'].sum()
 from sympy.solvers.diophantine import diophantine
 from sympy.solvers.diophantine.diophantine import diop_solve
 """
+
+"""
+example:
+
+-g - i + 10 > -1
+5 - g > -1
+g - 1 > -1
+11 - i > -1
+i - 8 > -1
+
+g>-1
+i>-1
+
+
+i  - 10 - i + 10  == 0
+5 + i - 10 == i - 5
+9 - i 
+11 - i 
+i - 8 
+
+
+
+
+
+
+from sympy import *
+g, i= symbols("g, i", integer=True, nonnegative=True)
+list_of_inequalities = [-g - i + 10, 5 - g, g - 1 , 11 - i, i - 8]
+
+sols = [solve(t, g)[0] for t in list_of_inequalities if g in S(t).free_symbols]
+
+sols = [solveset(t >= 0, g, S.Reals) for t in list_of_inequalities if g in S(t).free_symbols]
+
+
+
+remaining=[i for i in list(boths['Count']) if type(i)!=int]
+
+for item in range(0, len(initialBoths)):
+    if initialBoths['Count'].iloc[item]==-1:
+        if type(boths['Count'].iloc[item])==int:
+            print(initialBoths.iloc[item])
+            print(boths.iloc[item][['Count']])
+            print()
+"""
+
+
+def genAllSubgroup(schoolFile, tab):
+    """
+    This reads in a school data file, subsets it to just the rows we want, and returns that subset
+    """
+    schoolData=pd.read_excel(schoolFile, tab)
+    schoolDict={"Assessment Name": "PARCC",
+           "Grade of Enrollment": "All"}
+    subset=schoolData
+    for item in list(schoolDict.keys()):
+        subset=subset.loc[subset[item]==schoolDict[item]]
+    return(subset)
+
+
+allSubgroup=genAllSubgroup(schoolFile, schoolLevelTab)
+allSubgroup['file']="school_levels_subgroup"
+allSubgroupfill=fillDf(allSubgroup)
+allSubgroupfill['Subgroup Value']=allSubgroup['Subgroup Value']
+allSubgroupfill['Subject']=allSubgroup['Subject']
+
+for school in allSubgroupfill['School Name'].unique():
+    subsetSchool=allSubgroupfill.loc[allSubgroupfill["School Name"]==school]
+    for grade in subsetSchool['Tested Grade/Subject'].unique():
+        subsetGrade=subsetSchool.loc[subsetSchool['Tested Grade/Subject']==grade]
+        for value in subsetGrade['Metric Value'].unique():
+            subsetValue=subsetGrade.loc[subsetGrade['Metric Value']==value]
+            for subject in subsetValue['Subject'].unique():
+                subsetSubject=subsetValue.loc[subsetValue['Subject']==subject]
+                if subsetSubject.loc[subsetSubject['Subgroup Value']=="All"]['Count'].iloc[0]==-1:
+                    otherValues=list(subsetSubject.loc[subsetSubject['Subgroup Value']!="All"]['Count'].values)
+                    if len([i for i in otherValues if i!=-1])>0:
+                        print([school, grade, value, subject])

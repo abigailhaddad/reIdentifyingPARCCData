@@ -142,7 +142,8 @@ def replaceWithSymbols(df, mySymbols, number):
             df['Total Count'].iloc[i]=mySymbols[number]
             number=number+1
     if number==0:
-       print(f'no missings in {schoolName}')
+        pass
+       #print(f'no missings in {schoolName}')
     return(df, mySymbols, number)
  
     
@@ -189,8 +190,18 @@ def finalWhatThing(df, equationDict, number):
             myEquation += otherValues[j]
         equationDict[number]= Eq((myEquation), totalMetric)
         number=number+1
-    return(equationDict)
+    return(equationDict, number)
 
+
+def proficiencySumByGrade(df, equationDict, number):
+    totalMetric=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']=="All")]['Count'].iloc[0]
+    otherValues=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']!="All")]['Count'].values
+    myEquation=0
+    for j in range(0, len(otherValues)):
+        myEquation += otherValues[j]
+    equationDict[number]= Eq((myEquation), totalMetric)
+    number=number+1
+    return(equationDict)
 
 def allsClean(df, schoolNumber):
     """
@@ -217,7 +228,8 @@ def allsClean(df, schoolNumber):
     df, mySymbols, number= replaceWithSymbols(df, mySymbols, number)
     equationDict, number=whatIsThisDoing(df, number)
     equationDict, number=whatIsThisOtherThingDoing(df, equationDict, number)
-    equationDict=finalWhatThing(df, equationDict, number)
+    equationDict, number=finalWhatThing(df, equationDict, number)
+    equationDict=proficiencySumByGrade(df, equationDict, number)
     """
     subsetProf=df.loc[df['file']=="Proficiency"]
     totalMetric=subsetProf.loc[subsetProf['Tested Grade/Subject']=='All']['Total Count'].iloc[0]
@@ -276,7 +288,7 @@ def allForSchool(subsetAll,subsetProf, schoolName, schoolNumber):
         toAppend=[schoolName, totalVars, unsolvedVars]
         numberUnsolved=getNumberVariablesLeft(solved)
         #print(toAppend)
-        print([schoolName, numberUnsolved])
+        #print([schoolName, numberUnsolved])
         #return(toAppend) ## OK there we go 
         boths['School Name']=schoolName 
         return(boths)
@@ -492,7 +504,7 @@ def genAllSubgroup(schoolFile, tab):
         subset=subset.loc[subset[item]==schoolDict[item]]
     return(subset)
 
-
+"""
 allSubgroup=genAllSubgroup(schoolFile, schoolLevelTab)
 allSubgroup['file']="school_levels_subgroup"
 allSubgroupfill=fillDf(allSubgroup)
@@ -511,3 +523,32 @@ for school in allSubgroupfill['School Name'].unique():
                     otherValues=list(subsetSubject.loc[subsetSubject['Subgroup Value']!="All"]['Count'].values)
                     if len([i for i in otherValues if i!=-1])>0:
                         print([school, grade, value, subject])
+"""
+
+def gen sumsToAll():
+    sumsToAll=[["White/Caucasian", 
+           "Hispanic/Latino",
+           "Two or More Races",
+           "Black/African American",
+           "American Indian/Alaska Native",
+           "Asian",
+           "Pacific Islander/Native Hawaiian"],
+           ["Military Connected",
+            "Not Military Connected"],
+           ["Not At-Risk",
+            "At-Risk"],
+           ["Not an English Learner",
+            "English Learner"],
+           ["Not Homeless",
+            "Homeless"],
+           ["CFSA",
+            "Not CFSA"],
+           ["Not Active or Monitored English Learner",
+            "Active or Monitored English Learner"],
+           ["Students with Disabilities",
+            "Not Special Education"]]
+    return(sumsToAll)
+
+
+
+

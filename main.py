@@ -152,8 +152,9 @@ def proficiencySumByGrade(df, equationDict, number):
     return(equationDict)
 
 def allsClean(df, schoolNumber):
-    keywords = [''.join(i) for i in product(ascii_lowercase, repeat = 2)]
-    myString=",".join(keywords)
+    keywords = [''.join(i) for i in product(ascii_lowercase, repeat = 2)] # you can make more symbols, but this is really what holds up the function and takes tons of time
+    AandB=[i for i in keywords if i[0]=="a" or i[0]=="b"]
+    myString=",".join(AandB)
     schoolString=myString.replace(",",f'{str(schoolNumber)},')+str(schoolNumber)
     mySymbols=symbols(schoolString, integer=True, nonnegative=True)
     number=0
@@ -258,7 +259,6 @@ schoolNumber=0
 #schoolNames=['Aiton Elementary School']
 
 for schoolName in schoolNames:  
-    print(schoolName)
     schoolData=levelsAndProf.loc[levelsAndProf['School Name']==schoolName]
     try:
         schoolData=allForSchool(schoolData, schoolName, schoolNumber) 

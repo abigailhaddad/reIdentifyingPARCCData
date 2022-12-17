@@ -20,6 +20,7 @@ import numpy as np
 import os
 import sympy
 pd.options.mode.chained_assignment = None
+import numpy as np
 
 """
 INPUTS: 
@@ -98,8 +99,8 @@ def fillDf(df):
     df=df.replace("n<10","DS")
     df=df.replace("<=10%", "DS")
     df=df.replace("DS",np.NaN)
-    df['Total Count']=df.groupby('Tested Grade/Subject')['Total Count'].ffill()
-    df['Total Count']=df.groupby('Tested Grade/Subject')['Total Count'].bfill()
+    df['Total Count']=df.groupby(['School Name', 'Tested Grade/Subject'])['Total Count'].ffill()
+    df['Total Count']=df.groupby(['School Name', 'Tested Grade/Subject'])['Total Count'].bfill()
     df.sort_values(['Tested Grade/Subject'])
     df=df.fillna(-1)
     df['Total Count']= pd.to_numeric(df['Total Count'], errors='coerce')
@@ -107,44 +108,18 @@ def fillDf(df):
     return(df[['Tested Grade/Subject', 'Metric Value', 'Count', 'Total Count', 'file', 'Percent','School Name']])
 
 
-def intermediate(subsetAll,subsetProf,  schoolName):
-    """
-    
 
-    Parameters
-    ----------
-    subsetAll : DF
-        this is the school level data
-    subsetProf : DF
-       this is the school proficiency data
-    schoolName : string
-        this is the name of the school we want data for
+def replaceWithSymbols(schoolData, mySymbols):    
+    schoolData['Count']=schoolData.apply(lambda x: substituteSymbol(x['Count'], x['countWithinSchool'], mySymbols), axis=1)
+    schoolData['Total_Count']=schoolData.apply(lambda x: substituteSymbol(x['Total Count'], x['countWithinSchool'], mySymbols), axis=1)
+    schoolData=schoolData.drop(columns=['countWithinSchool', 'totalCountWithinSchool'])
+    return(schoolData)
 
-    Returns
-    -------
-    boths : DF
-        this is the subset of the school level and proficiency data just for the school named
-
-    """
-    sampleSchool=subsetAll.loc[subsetAll['School Name']==schoolName]
-    sampleProf=subsetProf.loc[subsetProf['School Name']==schoolName]
-    sampleProf['Metric Value']="4 and 5"
-    boths=fillDf(pd.concat([sampleSchool, sampleProf]))
-    return(boths)
-
-
-def replaceWithSymbols(df, mySymbols, number):
-    for i in range(0, len(df)):
-        if df['Count'].iloc[i]==-1:
-            df['Count'].iloc[i]=mySymbols[number]
-            number=number+1
-        if df['Total Count'].iloc[i]==-1:
-            df['Total Count'].iloc[i]=mySymbols[number]
-            number=number+1
-    if number==0:
-        pass
-       #print(f'no missings in {schoolName}')
-    return(df, mySymbols, number)
+def substituteSymbol(count, countWithinSchool, mySymbols):
+    if count==-1:
+        return(mySymbols[countWithinSchool])
+    else:
+        return(count)
  
     
 def whatIsThisDoing(df, number):
@@ -222,14 +197,14 @@ def allsClean(df, schoolNumber):
     myString='a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,ab,ac,ad,ae,af,ag,ah,ai,aj,ak,al,am,an,ao,ap,aq,ar,as,at,au,av,aw,ax,ay,az,aaa,aab,aac,aad,aae,aaf,aag'
     schoolString=myString.replace(",",f'{str(schoolNumber)},')+str(schoolNumber)
     mySymbols=symbols(schoolString, integer=True, nonnegative=True)
-    df['Metric File']=df['Metric Value']+df['file']
-    df['Grade file']=df['Tested Grade/Subject']+df['file']
+
     number=0
-    df, mySymbols, number= replaceWithSymbols(df, mySymbols, number)
-    equationDict, number=whatIsThisDoing(df, number)
-    equationDict, number=whatIsThisOtherThingDoing(df, equationDict, number)
-    equationDict, number=finalWhatThing(df, equationDict, number)
-    equationDict=proficiencySumByGrade(df, equationDict, number)
+    
+    schoolData= replaceWithSymbols(df, mySymbols)
+    equationDict, number=whatIsThisDoing(schoolData, number)
+    equationDict, number=whatIsThisOtherThingDoing(schoolData, equationDict, number)
+    equationDict, number=finalWhatThing(schoolData, equationDict, number)
+    equationDict=proficiencySumByGrade(schoolData, equationDict, number)
     """
     subsetProf=df.loc[df['file']=="Proficiency"]
     totalMetric=subsetProf.loc[subsetProf['Tested Grade/Subject']=='All']['Total Count'].iloc[0]
@@ -242,7 +217,7 @@ def allsClean(df, schoolNumber):
     return(mySymbols, number, equationDict)
 
 
-def allForSchool(subsetAll,subsetProf, schoolName, schoolNumber):
+def allForSchool(schoolData, schoolName, schoolNumber):
     """
     
 
@@ -262,9 +237,8 @@ def allForSchool(subsetAll,subsetProf, schoolName, schoolNumber):
     boths: df with symbols, solved when possible
 
     """
-    boths=intermediate(subsetAll,subsetProf, schoolName)
-    initialBoths=boths[['Tested Grade/Subject', 'Metric Value', 'Count']]
-    mySymbols, number, equationDict=allsClean(boths, schoolNumber)
+    
+    mySymbols, number, equationDict=allsClean(schoolData, schoolNumber)
     numberOfRealEquations=len([i for i in list(equationDict.values()) if i!=True])
     if numberOfRealEquations>0:
         allequations=tuple(equationDict.values())
@@ -281,7 +255,7 @@ def allForSchool(subsetAll,subsetProf, schoolName, schoolNumber):
                 # we need to distinguish between DS and <10 and see which is which
             except:
                 pass
-            boths=boths.replace(item,toReplace)
+            schoolData=schoolData.replace(item,toReplace)
   
         totalVars=len([i for i in list(solved.values())])
         unsolvedVars=len([i for i in list(solved.values()) if type(i)==sympy.core.add.Add])
@@ -290,11 +264,11 @@ def allForSchool(subsetAll,subsetProf, schoolName, schoolNumber):
         #print(toAppend)
         #print([schoolName, numberUnsolved])
         #return(toAppend) ## OK there we go 
-        boths['School Name']=schoolName 
-        return(boths)
+        schoolData['School Name']=schoolName 
+        return(schoolData)
     else:
-        boths['School Name']=schoolName
-        return(boths)
+        schoolData['School Name']=schoolName
+        return(schoolData)
     
 def figureOutSums(fullDF):
     # how many people do we know the grade and level for?
@@ -328,7 +302,7 @@ def testInitialComplete(subsetAll, subsetProf):
     byAll=bothsAll.loc[(bothsAll['file']=="All") & (bothsAll['Tested Grade/Subject']=="All")]
     uniqueTotal=byAll.groupby(['Tested Grade/Subject', 'School Name']).first()['Total Count']
     sumCount=sum([i for i in uniqueTotal.values if i!=-1])
-    #print([sumCountLevel, sumCount])
+    print([sumCountLevel, sumCount])
     # sumCOuntLevel is working, sumCount is not  -ot's overreporting
   
 
@@ -358,6 +332,16 @@ def getSymbols(otherValuesLine):
     symbols=symbols+([i*-1 for i in list(sum(args, ())) if  type(i)==sympy.core.mul.Mul])
     return(symbols)
 
+def concatDatasets(subsetProf, subsetAll):
+    levelsAndProf=fillDf(pd.concat([subsetProf, subsetAll]))
+    levelsAndProf['countWithinSchool']=levelsAndProf.groupby(['School Name']).cumcount()+1
+    maxCount=levelsAndProf['countWithinSchool'].max()
+    levelsAndProf['totalCountWithinSchool']=levelsAndProf.groupby(['School Name']).cumcount()+maxCount    
+    levelsAndProf['Metric File']=levelsAndProf['Metric Value']+levelsAndProf['file']
+    levelsAndProf['Grade file']=levelsAndProf['Tested Grade/Subject']+levelsAndProf['file']
+    return(levelsAndProf)
+
+
 
 os.chdir(r"C:\Users\aehaddad\Documents")
 
@@ -365,27 +349,34 @@ schoolFile='[5] 2021-22 School Level PARCC and MSAA Data edited.xlsx'
 schoolProficientTab="Proficiency"
 schoolLevelTab="Performance Level"
 stateFile="stateLevel.csv" 
-    
-    
+
+
 stateData=genCleanState(stateFile)    
 subsetAll=cleanSchoolLevels(schoolFile, schoolLevelTab)
 subsetProf=cleanSchoolProficient(schoolFile, schoolProficientTab)
+subsetProf['Metric Value']="4 and 5"
+
 testInitialComplete(subsetAll, subsetProf)
+levelsAndProf=concatDatasets(subsetProf, subsetAll)
+
+
 schoolNames=list(subsetAll['School Name'].unique())
 fullListDF=[]
 fullList=[]
 schoolNumber=0
 
-for schoolName in schoolNames:
+for schoolName in schoolNames:  
+    schoolData=levelsAndProf.loc[levelsAndProf['School Name']==schoolName]
     try:
-        boths=allForSchool(subsetAll,subsetProf, schoolName, schoolNumber)
+        schoolData=allForSchool(schoolData, schoolName, schoolNumber) 
         toAppend=[schoolName, "not broke", "not broke"] # this was supposed to be numbers
     except:
         toAppend=[schoolName, "broke", "broke"]
-        #print(toAppend)
-    fullListDF.append(boths)
+        print(toAppend)
+    fullListDF.append(schoolData)
     fullList.append(toAppend)
     schoolNumber=schoolNumber+1
+
 myDF=pd.DataFrame(fullList)
 nonBroke=myDF.loc[myDF[1]!="broke"]
 #print(nonBroke.mean()) # this is because we have this toappend stuff
@@ -402,7 +393,7 @@ byAll.loc[~byAll.index.isin(nonMissingIndex)]
 
 
 figureOutSums(fullDF)
-"""
+
 42999-42287 # this seems too big for just four smaller schools 
 
 Performance Level 1	11626
@@ -489,13 +480,13 @@ for item in range(0, len(initialBoths)):
             print(initialBoths.iloc[item])
             print(boths.iloc[item][['Count']])
             print()
-"""
+
 
 
 def genAllSubgroup(schoolFile, tab):
-    """
-    This reads in a school data file, subsets it to just the rows we want, and returns that subset
-    """
+ 
+    #This reads in a school data file, subsets it to just the rows we want, and returns that subset
+
     schoolData=pd.read_excel(schoolFile, tab)
     schoolDict={"Assessment Name": "PARCC",
            "Grade of Enrollment": "All"}
@@ -504,7 +495,7 @@ def genAllSubgroup(schoolFile, tab):
         subset=subset.loc[subset[item]==schoolDict[item]]
     return(subset)
 
-"""
+
 allSubgroup=genAllSubgroup(schoolFile, schoolLevelTab)
 allSubgroup['file']="school_levels_subgroup"
 allSubgroupfill=fillDf(allSubgroup)
@@ -523,9 +514,9 @@ for school in allSubgroupfill['School Name'].unique():
                     otherValues=list(subsetSubject.loc[subsetSubject['Subgroup Value']!="All"]['Count'].values)
                     if len([i for i in otherValues if i!=-1])>0:
                         print([school, grade, value, subject])
-"""
 
-def gen sumsToAll():
+
+def sumsToAll():
     sumsToAll=[["White/Caucasian", 
            "Hispanic/Latino",
            "Two or More Races",
@@ -551,4 +542,4 @@ def gen sumsToAll():
 
 
 
-
+"""

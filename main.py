@@ -100,7 +100,7 @@ def fillDf(df):
 
 def replaceWithSymbols(schoolData, mySymbols):    
     schoolData['Count']=schoolData.apply(lambda x: substituteSymbol(x['Count'], x['countWithinSchool'], mySymbols), axis=1)
-    schoolData['Total_Count']=schoolData.apply(lambda x: substituteSymbol(x['Total Count'], x['countWithinSchool'], mySymbols), axis=1)
+    schoolData['Total Count']=schoolData.apply(lambda x: substituteSymbol(x['Total Count'], x['countWithinSchool'], mySymbols), axis=1)
     schoolData=schoolData.drop(columns=['countWithinSchool', 'totalCountWithinSchool'])
     return(schoolData)
 
@@ -109,7 +109,6 @@ def substituteSymbol(count, countWithinSchool, mySymbols):
         return(mySymbols[countWithinSchool])
     else:
         return(count)
- 
     
 def whatIsThisDoing(df, number):
     equationDict={}
@@ -117,8 +116,7 @@ def whatIsThisDoing(df, number):
     for i in list(df['Metric File'].unique()):
         number=number+1
         totalMetric=df.loc[(df['Metric File']==i) & (df['Tested Grade/Subject']=="All")]['Count'].iloc[0]
-        otherItems=df.loc[(df['Metric File']==i) & (df['Tested Grade/Subject']!="All")]
-        myEquation=otherItems['Count'].values.sum()
+        myEquation=df.loc[(df['Metric File']==i) & (df['Tested Grade/Subject']!="All")]['Count'].values.sum()
         equationDict[number]= Eq((myEquation), totalMetric)
     return(equationDict, number)
 
@@ -132,14 +130,24 @@ def whatIsThisOtherThingDoing(df, equationDict, number):
         equationDict[number]= Eq((myEquation), totalMetric)
     return(equationDict, number)
 
+
+
+def sumRelationships():
+    inCommon='Grade file'
+    total={"file": "All",
+          "value": "Total Count"}
+    count={"file": "All",
+           "value": "Count"}
+    return(inCommon, total, count)
+
+
+
 def finalWhatThing(df, equationDict, number):
     for i in list(df.loc[df['file']=="Proficiency"]['Tested Grade/Subject'].unique()):
         # here we say: overall proficiency number is the sum of level 4 and 5
         number=number+1
-        totalMetricsLine=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']==i)]
-        totalMetric=totalMetricsLine['Count'].iloc[0]
-        otherValues=df.loc[(df['file']!="Proficiency") & (df['Tested Grade/Subject']==i)]
-        myEquation=otherValues.loc[otherValues['Metric Value'].isin(["Performance Level 4", "Performance Level 5"])]['Count'].values.sum()
+        totalMetric=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']==i)]['Count'].iloc[0]
+        myEquation=df.loc[(df['file']!="Proficiency") & (df['Tested Grade/Subject']==i) & df['Metric Value'].isin(["Performance Level 4", "Performance Level 5"])]['Count'].values.sum()
         equationDict[number]= Eq((myEquation), totalMetric)
     return(equationDict, number)
 
@@ -169,6 +177,10 @@ def allsClean(df, schoolNumber):
 def allForSchool(schoolData, schoolName, schoolNumber):
     
     mySymbols, number, equationDict=allsClean(schoolData, schoolNumber)
+    valuesInSchoolData=list(schoolData['Count'].values)+list(schoolData['Total Count'].values)
+    symbolsWeUse=[i for i in valuesInSchoolData if type(i)== sympy.core.symbol.Symbol]
+    mySymbols=tuple([i for i in mySymbols if i in symbolsWeUse])
+    # the length of this is the length of initially missing things
     numberOfRealEquations=len([i for i in list(equationDict.values()) if i!=True])
     if numberOfRealEquations>0:
         allequations=tuple(equationDict.values())
@@ -180,7 +192,6 @@ def allForSchool(schoolData, schoolName, schoolNumber):
             except:
                 pass
             schoolData=schoolData.replace(item,toReplace)
-  
         totalVars=len([i for i in list(solved.values())])
         unsolvedVars=len([i for i in list(solved.values()) if type(i)==sympy.core.add.Add])
         toAppend=[schoolName, totalVars, unsolvedVars]
@@ -254,21 +265,34 @@ testInitialComplete(levelsAndProf)
 
 schoolNames=list(levelsAndProf['School Name'].unique())
 fullListDF=[]
-fullList=[]
 schoolNumber=0
-#schoolNames=['Aiton Elementary School']
+#schoolNames=['Lee Montessori PCS - Brookland']
+schoolNames=["Roosevelt STAY High School",
+             "Ballou STAY High School",
+             "Luke C. Moore High School",
+             "Maya Angelou PCS - Academy at DC Jail"
+             "Roots PCS",
+             "Shining Stars Montessori Academy PCS",
+             "Lee Montessori PCS - Brookland",
+             "Monument Academy PCS",
+             "Kingsman Academy PCS",
+             "Goodwill Excel Center PCS",
+             "Capital Village PCS"
+             "I Dream PCS",
+             "Maya Angelou Academy @ Youth Services Center",
+             "Maya Angelou Academy at New Beginnings formerly Oak Hill"]
+
 
 for schoolName in schoolNames:  
     schoolData=levelsAndProf.loc[levelsAndProf['School Name']==schoolName]
     try:
         schoolData=allForSchool(schoolData, schoolName, schoolNumber) 
-        toAppend=[schoolName, "not broke", "not broke"] # this was supposed to be numbers
     except:
-        toAppend=[schoolName, "broke", "broke"]
-        print(toAppend)
+        print(schoolName)
     fullListDF.append(schoolData)
-    fullList.append(toAppend)
     schoolNumber=schoolNumber+1
+    
+# want something for determining - is it all blank?    
 """
 myDF=pd.DataFrame(fullList)
 fullDF=pd.concat(fullListDF)

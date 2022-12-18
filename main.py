@@ -101,7 +101,6 @@ def fillDf(df):
                 alls=int(smaller.loc[smaller['Tested Grade/Subject']=="All"]['Total Count'].iloc[0])
                 smalls=smaller.loc[smaller['Tested Grade/Subject']!="All"]['Total Count'].values
                 if len([str(i) for i in smalls if str(i)=="nan"])==1:
-                    print(schoolName)
                     values=[int(i) for i in smalls  if str(i)!="nan"]
                     missing=alls-sum(values)
                     missingindex=df.loc[(df['School Name']==schoolName) & (df['Metric Value']==j) & (df['Total Count'].isnull())].index[0]
@@ -125,18 +124,7 @@ def substituteSymbol(count, countWithinSchool, mySymbols):
     if count==-1:
         return(mySymbols[countWithinSchool])
     else:
-        return(count)
-    
-    
-def totalCount(df, equationDict, number):
-    # need to find a way of saying, total count sums
-    for i in df['Metric File'].unique():
-        subset=df.loc[df['Metric File']==i]
-        number=number+1
-        totalMetric=subset.loc[subset['Tested Grade/Subject']=="All"]['Total Count'].iloc[0]
-        myEquation=subset.loc[subset['Tested Grade/Subject']!="All"]['Total Count'].values.sum()
-        equationDict[number]= Eq((myEquation), totalMetric)
-    return(equationDict, number)    
+        return(count) 
     
 def whatIsThisDoing(df, equationDict, number):
     for i in list(df['Metric File'].unique()):
@@ -195,38 +183,6 @@ def allsClean(df, schoolNumber):
     equationDict, number=finalWhatThing(schoolData, equationDict, number)
     equationDict=proficiencySumByGrade(schoolData, equationDict, number)
     return(mySymbols, number, equationDict)
-
-def justTotalCount(schoolData, schoolName, schoolNumber):
-    keywords = [''.join(i) for i in product(ascii_lowercase, repeat = 2)] # you can make more symbols, but this is really what holds up the function and takes tons of time
-    AandB=[i for i in keywords if i[0]=="a" or i[0]=="b"]
-    myString=",".join(AandB)
-    schoolString=myString.replace(",",f'{str(schoolNumber)},')+str(schoolNumber)
-    mySymbols=symbols(schoolString, integer=True, nonnegative=True)
-    number=0
-    schoolData= replaceWithSymbols(schoolData, mySymbols)
-    equationDict={}
-    equationDict, number=totalCount(df, equationDict, number)
-    valuesInSchoolData=list(schoolData['Count'].values)+list(schoolData['Total Count'].values)
-    symbolsWeUse=[i for i in valuesInSchoolData if type(i)== sympy.core.symbol.Symbol]
-    mySymbols=tuple([i for i in mySymbols if i in symbolsWeUse])
-    # the length of this is the length of initially missing things
-    numberOfRealEquations=len([i for i in list(equationDict.values()) if i!=True])
-    if numberOfRealEquations>0:
-        allequations=tuple(equationDict.values())
-        solved=(solve((allequations), (mySymbols)))
-        for item in list(solved.keys()):
-            toReplace=solved[item]
-            try:
-                toReplace=int(toReplace)
-            except:
-                pass
-            schoolData=schoolData.replace(item,toReplace)
-        return(schoolData)
-    else:
-        schoolData['School Name']=schoolName
-        return(schoolData)
-
-
 
 def allForSchool(schoolData, schoolName, schoolNumber):
     mySymbols, number, equationDict=allsClean(schoolData, schoolNumber)
@@ -308,21 +264,12 @@ def getOrGenData(gen=False):
 
 os.chdir(r"C:\Users\aehaddad\Documents")
 
-levelsAndProf=getOrGenData(gen=True)
+levelsAndProf=getOrGenData(gen=False)
 testInitialComplete(levelsAndProf)
 brokenSchools=[]
 
 fullListDF=[]
 schoolNumber=0
-
-schoolNames=["Roosevelt STAY High School",
-             "Ballou STAY High School",
-             "Luke C. Moore High School",
-             "Roots PCS",
-             "Shining Stars Montessori Academy PCS",
-             "Lee Montessori PCS - Brookland",
-             "Monument Academy PCS",
-             "Capital Village PCS"]
 
 schoolNames=list(levelsAndProf['School Name'].unique())
 
@@ -406,3 +353,48 @@ def sumsToAll():
 
 
 """
+# let's get into ranges!
+justOnes=[]
+for schoolName in fullDF['School Name'].unique():
+    #schoolName="Sela PCS"
+    sample=fullDF.loc[fullDF['School Name']==schoolName]
+    unsolved=[i for i in sample['Count'].values if type(i)!=int]
+    rawlistunsolved="-".join([str(i) for i in unsolved]).split("-")
+    nextStep=list(set([i.strip() for i in rawlistunsolved]))
+    varsLeft=[string_1 for string_1 in nextStep if any(c.isalpha() for c in string_1)]
+    if len(varsLeft)==1:
+        justOnes.append(schoolName)
+        print(unsolved)
+        
+def solveIfOneMissing(fullDF, schoolName):
+    possibleValues=[]
+    sample=fullDF.loc[fullDF['School Name']==schoolName]
+    unsolvedValues=[i for i in sample['Count'].values if type(i)!=int]
+    myVar=[i for i in unsolvedValues if type(i)==sympy.core.symbol.Symbol][0]
+    try:
+        for i in range(0,50):
+            values=[]
+            for item in range(0, len(unsolvedValues)):
+                value=unsolvedValues[item].subs({myVar: i})
+                values.append(value)
+            if all(x >= 0 for x in values):
+                possibleValues.append(i)
+        return(possibleValues)        
+    except:
+        print(schoolName)
+
+    
+for schoolName in justOnes:
+    print(schoolName)
+    print(solveIfOneMissing(fullDF, schoolName))
+    
+# a fair number of these only have one variable unsolved for
+
+    """
+
+
+# can we figure out anything about algebra?
+geometryValues=fullDF.loc[fullDF['Grade file']=="GeometryProficiency"][['School Name', 'Count', 'Total Count']]
+
+integers=[i for i in geometryValues['Count'].values if type(i)==int]
+sum(integers)

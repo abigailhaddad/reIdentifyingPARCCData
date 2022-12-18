@@ -87,10 +87,27 @@ def fillDf(df):
     4) makes the count and total count fields into numbers
     
     """
-    df=df.loc[df['Subject']=="ELA"]
+    df=df.loc[df['Subject']!="ELA"]
     missingValues=genMissingValues()
     for value in missingValues:
         df=df.replace(value, np.NaN)
+    df['Total Count']=df.groupby(['School Name', 'Tested Grade/Subject'])['Total Count'].ffill()
+    df['Total Count']=df.groupby(['School Name', 'Tested Grade/Subject'])['Total Count'].bfill()
+    for schoolName in df['School Name'].unique():
+        subset=df.loc[df['School Name']==schoolName]
+        for j in subset['Metric Value'].unique():
+            try:
+                smaller=subset.loc[(subset['Metric Value']==j)]
+                alls=int(smaller.loc[smaller['Tested Grade/Subject']=="All"]['Total Count'].iloc[0])
+                smalls=smaller.loc[smaller['Tested Grade/Subject']!="All"]['Total Count'].values
+                if len([str(i) for i in smalls if str(i)=="nan"])==1:
+                    print(schoolName)
+                    values=[int(i) for i in smalls  if str(i)!="nan"]
+                    missing=alls-sum(values)
+                    missingindex=df.loc[(df['School Name']==schoolName) & (df['Metric Value']==j) & (df['Total Count'].isnull())].index[0]
+                    df.at[missingindex, 'Total Count']=missing    
+            except:
+                print(schoolName)
     df['Total Count']=df.groupby(['School Name', 'Tested Grade/Subject'])['Total Count'].ffill()
     df['Total Count']=df.groupby(['School Name', 'Tested Grade/Subject'])['Total Count'].bfill()
     df=df.fillna(-1)
@@ -110,9 +127,18 @@ def substituteSymbol(count, countWithinSchool, mySymbols):
     else:
         return(count)
     
-def whatIsThisDoing(df, number):
-    equationDict={}
-    number=0
+    
+def totalCount(df, equationDict, number):
+    # need to find a way of saying, total count sums
+    for i in df['Metric File'].unique():
+        subset=df.loc[df['Metric File']==i]
+        number=number+1
+        totalMetric=subset.loc[subset['Tested Grade/Subject']=="All"]['Total Count'].iloc[0]
+        myEquation=subset.loc[subset['Tested Grade/Subject']!="All"]['Total Count'].values.sum()
+        equationDict[number]= Eq((myEquation), totalMetric)
+    return(equationDict, number)    
+    
+def whatIsThisDoing(df, equationDict, number):
     for i in list(df['Metric File'].unique()):
         number=number+1
         totalMetric=df.loc[(df['Metric File']==i) & (df['Tested Grade/Subject']=="All")]['Count'].iloc[0]
@@ -130,8 +156,6 @@ def whatIsThisOtherThingDoing(df, equationDict, number):
         equationDict[number]= Eq((myEquation), totalMetric)
     return(equationDict, number)
 
-
-
 def sumRelationships():
     inCommon='Grade file'
     total={"file": "All",
@@ -139,8 +163,6 @@ def sumRelationships():
     count={"file": "All",
            "value": "Count"}
     return(inCommon, total, count)
-
-
 
 def finalWhatThing(df, equationDict, number):
     for i in list(df.loc[df['file']=="Proficiency"]['Tested Grade/Subject'].unique()):
@@ -153,10 +175,10 @@ def finalWhatThing(df, equationDict, number):
 
 
 def proficiencySumByGrade(df, equationDict, number):
+    number=number+1
     totalMetric=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']=="All")]['Count'].iloc[0]
     myEquation=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']!="All")]['Count'].values.sum()
     equationDict[number]= Eq((myEquation), totalMetric)
-    number=number+1
     return(equationDict)
 
 def allsClean(df, schoolNumber):
@@ -167,15 +189,46 @@ def allsClean(df, schoolNumber):
     mySymbols=symbols(schoolString, integer=True, nonnegative=True)
     number=0
     schoolData= replaceWithSymbols(df, mySymbols)
-    equationDict, number=whatIsThisDoing(schoolData, number)
+    equationDict={}
+    equationDict, number=whatIsThisDoing(schoolData, equationDict, number)
     equationDict, number=whatIsThisOtherThingDoing(schoolData, equationDict, number)
     equationDict, number=finalWhatThing(schoolData, equationDict, number)
     equationDict=proficiencySumByGrade(schoolData, equationDict, number)
     return(mySymbols, number, equationDict)
 
+def justTotalCount(schoolData, schoolName, schoolNumber):
+    keywords = [''.join(i) for i in product(ascii_lowercase, repeat = 2)] # you can make more symbols, but this is really what holds up the function and takes tons of time
+    AandB=[i for i in keywords if i[0]=="a" or i[0]=="b"]
+    myString=",".join(AandB)
+    schoolString=myString.replace(",",f'{str(schoolNumber)},')+str(schoolNumber)
+    mySymbols=symbols(schoolString, integer=True, nonnegative=True)
+    number=0
+    schoolData= replaceWithSymbols(schoolData, mySymbols)
+    equationDict={}
+    equationDict, number=totalCount(df, equationDict, number)
+    valuesInSchoolData=list(schoolData['Count'].values)+list(schoolData['Total Count'].values)
+    symbolsWeUse=[i for i in valuesInSchoolData if type(i)== sympy.core.symbol.Symbol]
+    mySymbols=tuple([i for i in mySymbols if i in symbolsWeUse])
+    # the length of this is the length of initially missing things
+    numberOfRealEquations=len([i for i in list(equationDict.values()) if i!=True])
+    if numberOfRealEquations>0:
+        allequations=tuple(equationDict.values())
+        solved=(solve((allequations), (mySymbols)))
+        for item in list(solved.keys()):
+            toReplace=solved[item]
+            try:
+                toReplace=int(toReplace)
+            except:
+                pass
+            schoolData=schoolData.replace(item,toReplace)
+        return(schoolData)
+    else:
+        schoolData['School Name']=schoolName
+        return(schoolData)
+
+
 
 def allForSchool(schoolData, schoolName, schoolNumber):
-    
     mySymbols, number, equationDict=allsClean(schoolData, schoolNumber)
     valuesInSchoolData=list(schoolData['Count'].values)+list(schoolData['Total Count'].values)
     symbolsWeUse=[i for i in valuesInSchoolData if type(i)== sympy.core.symbol.Symbol]
@@ -192,11 +245,6 @@ def allForSchool(schoolData, schoolName, schoolNumber):
             except:
                 pass
             schoolData=schoolData.replace(item,toReplace)
-        totalVars=len([i for i in list(solved.values())])
-        unsolvedVars=len([i for i in list(solved.values()) if type(i)==sympy.core.add.Add])
-        toAppend=[schoolName, totalVars, unsolvedVars]
-        numberUnsolved=getNumberVariablesLeft(solved)
-        schoolData['School Name']=schoolName 
         return(schoolData)
     else:
         schoolData['School Name']=schoolName
@@ -260,50 +308,65 @@ def getOrGenData(gen=False):
 
 os.chdir(r"C:\Users\aehaddad\Documents")
 
-levelsAndProf=getOrGenData(gen=False)
+levelsAndProf=getOrGenData(gen=True)
 testInitialComplete(levelsAndProf)
+brokenSchools=[]
 
-schoolNames=list(levelsAndProf['School Name'].unique())
 fullListDF=[]
 schoolNumber=0
-#schoolNames=['Lee Montessori PCS - Brookland']
+
 schoolNames=["Roosevelt STAY High School",
              "Ballou STAY High School",
              "Luke C. Moore High School",
-             "Maya Angelou PCS - Academy at DC Jail"
              "Roots PCS",
              "Shining Stars Montessori Academy PCS",
              "Lee Montessori PCS - Brookland",
              "Monument Academy PCS",
-             "Kingsman Academy PCS",
-             "Goodwill Excel Center PCS",
-             "Capital Village PCS"
-             "I Dream PCS",
-             "Maya Angelou Academy @ Youth Services Center",
-             "Maya Angelou Academy at New Beginnings formerly Oak Hill"]
+             "Capital Village PCS"]
 
+schoolNames=list(levelsAndProf['School Name'].unique())
 
 for schoolName in schoolNames:  
     schoolData=levelsAndProf.loc[levelsAndProf['School Name']==schoolName]
     try:
         schoolData=allForSchool(schoolData, schoolName, schoolNumber) 
     except:
-        print(schoolName)
+        brokenSchools.append(schoolName)
     fullListDF.append(schoolData)
     schoolNumber=schoolNumber+1
-    
-# want something for determining - is it all blank?    
-"""
-myDF=pd.DataFrame(fullList)
+
 fullDF=pd.concat(fullListDF)
-
-
-
 figureOutSums(fullDF)
+#print(fullDF.loc[fullDF['School Name']=="Sela PCS"]['Count'])
+schoolData=fullDF.loc[fullDF['School Name']=="Sela PCS"]
+
+def genMetricsBySchool(levelsAndProf):
+    metricsBySchool=[]
+    for schoolName in levelsAndProf['School Name'].unique():
+        schoolData=levelsAndProf.loc[levelsAndProf['School Name']==schoolName]
+        count=len(schoolData)
+        missingCount=count-len([i for i in schoolData['Count'].values if type(i)==int or i==-1])
+        metricsBySchool.append([schoolName, count, missingCount])
+    metricDF=pd.DataFrame(metricsBySchool, columns=['School', 'Line Count', 'Missing Count'])
+    return(metricDF)
+
+initialCount=genMetricsBySchool(levelsAndProf)
+print(initialCount['Missing Count'].sum())
+finalCount=genMetricsBySchool(fullDF)
+print(finalCount['Missing Count'].sum())
 
 
 
 
+
+"""
+        #totalVars=len([i for i in list(solved.values())])
+        #unsolvedVars=len([i for i in list(solved.values()) if type(i)==sympy.core.add.Add])
+        #toAppend=[schoolName, totalVars, unsolvedVars]
+        #numberUnsolved=getNumberVariablesLeft(solved)
+        #schoolData['School Name']=schoolName 
+        
+        
 ['Maya Angelou PCS - Academy at DC Jail',
  'Goodwill Excel Center PCS',
  'I Dream PCS',

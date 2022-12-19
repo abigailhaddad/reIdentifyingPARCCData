@@ -386,13 +386,47 @@ def solveIfOneMissing(fullDF, schoolName):
     except:
         print(schoolName)
 
+
+def solveIfNMissing(fullDF, schoolName):
+    possibleValues=[]
+    sample=fullDF.loc[fullDF['School Name']==schoolName]
+    unsolvedValues=[i for i in sample['Count'].values if type(i)!=int]
+    myVars=list(set([i for i in unsolvedValues if type(i)==sympy.core.symbol.Symbol]))
+    allCombos=[i for i in product(range(0,20), repeat = len(myVars))]
+    for aSet in allCombos:
+        values=[]
+        dictionaryOfValues={}
+        for count in range(0, len(myVars)):
+            dictionaryOfValues[myVars[count]]=aSet[count] # this is working
+        for item in unsolvedValues:
+            value=item.subs(dictionaryOfValues)
+            values.append(value)
+        if all(x >= 0 for x in values):
+            possibleValues.append(aSet)
+    return(possibleValues)        
+
     
 for schoolName in justOnes:
     print(schoolName)
-    print(solveIfOneMissing(fullDF, schoolName))
+    values=(solveIfOneMissing(fullDF, schoolName))
+    print(len(values))
+    
+    
+for schoolName in justOnes:
+    print(schoolName)
+    values=solveIfNMissing(fullDF, schoolName)
+    print(len(values))
+    
+for schoolName in justOnes:
+    firstWay=(solveIfOneMissing(fullDF, schoolName))
+    secondWay=solveIfNMissing(fullDF, schoolName)
+    if len(firstWay)==len(secondWay):
+        print([schoolName, "yay"])
+    else:
+        print([schoolName, "nooo"])
     
 # a fair number of these only have one variable unsolved for
-
+schoolName= 'Benjamin Banneker High School'
     """
 
 

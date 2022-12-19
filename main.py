@@ -355,17 +355,20 @@ def sumsToAll():
 """
 # let's get into ranges!
 justOnes=[]
+justTwos=[]
 for schoolName in fullDF['School Name'].unique():
+    # this does not work FYI but also we don't really need it
     #schoolName="Sela PCS"
     sample=fullDF.loc[fullDF['School Name']==schoolName]
-    unsolved=[i for i in sample['Count'].values if type(i)!=int]
-    rawlistunsolved="-".join([str(i) for i in unsolved]).split("-")
-    nextStep=list(set([i.strip() for i in rawlistunsolved]))
-    varsLeft=[string_1 for string_1 in nextStep if any(c.isalpha() for c in string_1)]
-    if len(varsLeft)==1:
+    symbols=set([i for i in sample['Count'].values if type(i)==sympy.core.symbol.Symbol])
+    print(len(symbols))
+    if len(symbols)==1:
         justOnes.append(schoolName)
-        print(unsolved)
+    if len(symbols)==2:
+        justTwos.append(schoolName)
         
+schoolName= 'Stoddert Elementary School'
+
 def solveIfOneMissing(fullDF, schoolName):
     possibleValues=[]
     sample=fullDF.loc[fullDF['School Name']==schoolName]

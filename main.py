@@ -302,7 +302,72 @@ print(initialCount['Missing Count'].sum())
 finalCount=genMetricsBySchool(fullDF)
 print(finalCount['Missing Count'].sum())
 
+missingCounts=[]
+for schoolName in fullDF['School Name'].unique():
+    # this does not work FYI but also we don't really need it
+    #schoolName="Sela PCS"
+    sample=fullDF.loc[fullDF['School Name']==schoolName]
+    symbols=set([i for i in sample['Count'].values if type(i)==sympy.core.symbol.Symbol])
+    missingCounts.append([schoolName, len(symbols)])
 
+dfmissing=pd.DataFrame(missingCounts)
+dfmissing.columns=['School Name', 'Count of Missing Symbols']
+
+def solveIfNMissing(fullDF, schoolName):
+    possibleValues=[]
+    sample=fullDF.loc[fullDF['School Name']==schoolName]
+    unsolvedValues=[i for i in sample['Count'].values if type(i)!=int]
+    myVars=list(set([i for i in unsolvedValues if type(i)==sympy.core.symbol.Symbol]))
+    allCombos=[i for i in product(range(0,20), repeat = len(myVars))]
+    for aSet in allCombos:
+        values=[]
+        dictionaryOfValues={}
+        for count in range(0, len(myVars)):
+            dictionaryOfValues[myVars[count]]=aSet[count] # this is working
+        for item in unsolvedValues:
+            value=item.subs(dictionaryOfValues)
+            values.append(value)
+        if all(x >= 0 for x in values):
+            possibleValues.append(aSet)
+    return(myVars, possibleValues) 
+
+def getSolvesOnes(fullDF, dfmissing):
+    selectedSchools=dfmissing.loc[dfmissing['Count of Missing Symbols']<3]['School Name']
+    # this takes awhile to run
+    dictOfReplacements={}
+    for schoolName in selectedSchools:
+        myVars, possibleValues=solveIfNMissing(fullDF, schoolName)
+        if len(possibleValues)==1:
+            replacements=possibleValues[0]
+            for item in range(0, len(myVars)):
+                dictOfReplacements[myVars[item]]=replacements[item]       
+    return(dictOfReplacements)
+
+dictOfReplacements=getSolvesOnes(fullDF, dfmissing)
+
+def applydict(nonintvalue, dictOfReplacements):
+    if type(nonintvalue)!=int:
+        try:
+            item=nonintvalue.subs(dictOfReplacements)
+            return(int(item))
+        except:
+            return(nonintvalue)
+    else:
+        return(nonintvalue)
+    
+figureOutSums(fullDF)
+
+# of new ones we filled in 
+
+fullDF['Test Count']=fullDF.apply(lambda x: applydict(x['Count'], dictOfReplacements), axis=1)     
+byGrade=fullDF.loc[(fullDF['file']=="All") & (fullDF['Tested Grade/Subject']!="All")]
+print(sum([i for i in list(byGrade['Test Count']) if type(i)==int])-sum([i for i in list(byGrade['Count']) if type(i)==int]))
+
+
+
+# so we are getting slghtly more
+
+# it's working
 
 
 
@@ -352,22 +417,11 @@ def sumsToAll():
 
 
 
-"""
+
 # let's get into ranges!
-justOnes=[]
-justTwos=[]
-for schoolName in fullDF['School Name'].unique():
-    # this does not work FYI but also we don't really need it
-    #schoolName="Sela PCS"
-    sample=fullDF.loc[fullDF['School Name']==schoolName]
-    symbols=set([i for i in sample['Count'].values if type(i)==sympy.core.symbol.Symbol])
-    print(len(symbols))
-    if len(symbols)==1:
-        justOnes.append(schoolName)
-    if len(symbols)==2:
-        justTwos.append(schoolName)
-        
-schoolName= 'Stoddert Elementary School'
+
+
+
 
 def solveIfOneMissing(fullDF, schoolName):
     possibleValues=[]
@@ -387,32 +441,18 @@ def solveIfOneMissing(fullDF, schoolName):
         print(schoolName)
 
 
-def solveIfNMissing(fullDF, schoolName):
-    possibleValues=[]
-    sample=fullDF.loc[fullDF['School Name']==schoolName]
-    unsolvedValues=[i for i in sample['Count'].values if type(i)!=int]
-    myVars=list(set([i for i in unsolvedValues if type(i)==sympy.core.symbol.Symbol]))
-    allCombos=[i for i in product(range(0,20), repeat = len(myVars))]
-    for aSet in allCombos:
-        values=[]
-        dictionaryOfValues={}
-        for count in range(0, len(myVars)):
-            dictionaryOfValues[myVars[count]]=aSet[count] # this is working
-        for item in unsolvedValues:
-            value=item.subs(dictionaryOfValues)
-            values.append(value)
-        if all(x >= 0 for x in values):
-            possibleValues.append(aSet)
-    return(possibleValues)        
 
-    
+
+
+
+ 
 for schoolName in justOnes:
     print(schoolName)
     values=(solveIfOneMissing(fullDF, schoolName))
     print(len(values))
     
     
-for schoolName in justOnes:
+for schoolName in fullDF['School Name'].unique():
     print(schoolName)
     values=solveIfNMissing(fullDF, schoolName)
     print(len(values))
@@ -427,11 +467,15 @@ for schoolName in justOnes:
     
 # a fair number of these only have one variable unsolved for
 schoolName= 'Benjamin Banneker High School'
-    """
+
 
 
 # can we figure out anything about algebra?
 geometryValues=fullDF.loc[fullDF['Grade file']=="GeometryProficiency"][['School Name', 'Count', 'Total Count']]
 
+
+
 integers=[i for i in geometryValues['Count'].values if type(i)==int]
 sum(integers)
+
+"""

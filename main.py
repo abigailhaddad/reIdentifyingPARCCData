@@ -292,7 +292,9 @@ def determineNumberMissingSymbols(fullDF):
     for schoolName in fullDF['School Name'].unique():
     # this does not work FYI but also we don't really need it
         sample=fullDF.loc[fullDF['School Name']==schoolName]
-        symbols=set([i for i in sample['Count'].values if type(i)==sympy.core.symbol.Symbol] + [i for i in sample['Total Count'].values if type(i)==sympy.core.symbol.Symbol])
+        possibleValues=set([i for i in sample['Count'].values if type(i)!=int] + [i for i in sample['Total Count'].values if type(i)!=int])
+        symbols=takeSymbolFromList(possibleValues)
+        # this is not working becaus it's actually not the case the symbol is always there on its own
         missingCounts.append([schoolName, len(symbols)])
     dfmissing=pd.DataFrame(missingCounts)
     dfmissing.columns=['School Name', 'Count of Missing Symbols']
@@ -312,13 +314,21 @@ def testCombos(possibleValues, allCombos, unsolvedValues, myVars):
             possibleValues.append(aSet)
     return(myVars, possibleValues) 
     
-    
+def takeSymbolFromList(unsolvedValues):
+    firstPass=[i for i in unsolvedValues if type(i)==sympy.core.symbol.Symbol]
+    unflatlist=[list(i._args) for i in unsolvedValues]
+    secondPass=list(set([item for sublist in unflatlist for item in sublist if type(item)==sympy.core.mul.Mul or type(item)==sympy.core.symbol.Symbol]))
+    firstAndSecond=firstPass+secondPass
+    plusNegatives=firstAndSecond + [i * -1 for i in firstAndSecond]
+    justPositives=list(set([i for i in plusNegatives if str(i)[0]!="-"]))
+    return(justPositives)
+
 def solveIfNMissing(fullDF, schoolName):
     print(schoolName)
     possibleValues=[]
     sample=fullDF.loc[fullDF['School Name']==schoolName]
     unsolvedValues=list(set([i for i in sample['Count'].values if type(i)!=int] + [i for i in sample['Total Count'].values if type(i)!=int] ))
-    myVars=list(set([i for i in unsolvedValues if type(i)==sympy.core.symbol.Symbol]))
+    myVars=takeSymbolFromList(unsolvedValues)
     
     # we need to scope this
     """
@@ -515,10 +525,23 @@ algebraSchools=fullDF.loc[fullDF['Tested Grade/Subject']=="Algebra I"]['School N
 # this is working now but it takes a long time to run because we're not very efficienctly searching the sample space
 # I think to make expanding this possible we need to scope this based on the possible size based on the school
 
+for school in algebraSchools[0:10]:
+    print(school)
+    sample=fullDF.loc[fullDF['School Name']==schoolName]
+    subsample=sample.loc[sample['file']=="Proficiency"]
+    print(subsample[['Tested Grade/Subject', 'Count']])
+    print()
+    # omg this is so much better now so why are we still seeing this issue
+[i for i in fullDF.loc[(fullDF["Tested Grade/Subject"]=="Algebra I") & (fullDF["file"]=="Proficiency")]['Count'] if type(i)!=int]
+# ok we are still seeing some unsolved ones
 
+listOfUnsolved= [i for i in fullDF.loc[(fullDF["Tested Grade/Subject"]=="Algebra I") & (fullDF["file"]=="Proficiency")]['Count'] if type(i)!=int]
+fullDF.loc[fullDF['Count'].isin(listOfUnsolved)][['School Name', 'Count']]
+# so we do see a bunch of schools
+   
 
 """
-
+algebraValues=fullDF.loc[(fullDF["Tested Grade/Subject"]=="Algebra I") & (fullDF["file"]=="Proficiency")]
 # do we have any solutions where we solved one variable but not another?
 # we're interested in whether the original 'values' say anything about the actual value
 

@@ -353,7 +353,7 @@ def solveIfNMissing(fullDF, schoolName):
     return(myVars, possibleValues) 
 
 def getSolvesOnes(fullDF, dfmissing):
-    selectedSchools=dfmissing.loc[(dfmissing['Count of Missing Symbols']<7) & (dfmissing['Count of Missing Symbols']>0)]['School Name']
+    selectedSchools=dfmissing.loc[(dfmissing['Count of Missing Symbols']<6) & (dfmissing['Count of Missing Symbols']>0)]['School Name']
     # this takes awhile to run
     dictOfReplacements={}
     listOfPossible=[]
@@ -381,14 +381,74 @@ def applydict(nonintvalue, dictOfReplacements):
     else:
         return(nonintvalue)
     
+def solveFractionWithDenominator(count, percent, total_count):
+    # this takes fractions and looks at the total count
+    # this is only going to work if there isn't a weird rounding thing happening
+    # we could make it more flexible if we needed to
+    if type(count)!=int and  percent!=-1:
+        try:
+            target=float(percent)/100
+            denominator=total_count
+            lowest_possible=Fraction(int(round(target*denominator)), denominator)
+            if lowest_possible.denominator==denominator:
+                return( lowest_possible.numerator)
+            elif denominator % lowest_possible.denominator==0:
+                return(denominator/lowest_possible.denominator * lowest_possible.numerator)   
+            else: 
+                print("something weird happened with fraction rounding!")
+                return(-1)
+        except:
+            return(-1)
+    else:
+        return(-1)
+    
+def solveFractionWithDenominatorGetVar(count, percent, total_count):
+    # this is only going to work if the resulting equation has only one variable
+    # this takes fractions and looks at the total count
+    # this is only going to work if there isn't a weird rounding thing happening
+    # we could make it more flexible if we needed to
+    if count==-1 and  percent!=-1:
+        try:
+            target=float(percent)/100
+            denominator=total_count
+            lowest_possible=Fraction(int(round(target*denominator)), denominator)
+            #print([count, percent, total_count])
+            if lowest_possible.denominator==denominator:
+                newCount=( lowest_possible.numerator)
+            elif denominator % lowest_possible.denominator==0:
+                newCount=(denominator/lowest_possible.denominator * lowest_possible.numerator)  
+            else: 
+                print("something weird happened with fraction rounding!")
+            #print(newCount)
+            #equation=count-newCount
+            #print(equation)
+            #print()
+            return(int(newCount))
+        except:
+            return(int(count))
+    else:
+        return(int(count))
+    
 os.chdir(r"C:\Users\aehaddad\Documents")
 levelsAndProf=getOrGenData(gen=False)
 testInitialComplete(levelsAndProf)
 initialCount=genMetricsBySchool(levelsAndProf)
+
+
+
+levelsAndProf['Count']=levelsAndProf.apply(lambda x: solveFractionWithDenominatorGetVar(x['Count'], x['Percent'], x['Total Count']), axis=1)
+
+print('post fraction trick')
+afterFractionCount=genMetricsBySchool(levelsAndProf)
+
+
+
+
 fullDF, brokenSchools=iterateThroughSchoolsSolve(levelsAndProf)
 figureOutSums(fullDF)
 
 print(initialCount['Missing Count'].sum())
+print(afterFractionCount['Missing Count'].sum())
 finalCount=genMetricsBySchool(fullDF)
 print(finalCount['Missing Count'].sum())
 
@@ -425,73 +485,10 @@ schoolExample=rowswithpercent.iloc[0]['School Name']
 
 subsetDF=fullDF.loc[fullDF['School Name']==schoolExample]
 
-def solveFractionWithDenominator(count, percent, total_count):
-    # this takes fractions and looks at the total count
-    # this is only going to work if there isn't a weird rounding thing happening
-    # we could make it more flexible if we needed to
-    if type(count)!=int and  percent!=-1:
-        try:
-            target=float(percent)/100
-            denominator=total_count
-            lowest_possible=Fraction(int(round(target*denominator)), denominator)
-            if lowest_possible.denominator==denominator:
-                return( lowest_possible.numerator)
-            elif denominator % lowest_possible.denominator==0:
-                return(denominator/lowest_possible.denominator * lowest_possible.numerator)   
-            else: 
-                print("something weird happened with fraction rounding!")
-                return(-1)
-        except:
-            return(-1)
-    else:
-        return(-1)
-    
-def solveFractionWithDenominatorGetVar(count, percent, total_count):
-    # this is only going to work if the resulting equation has only one variable
-    # this takes fractions and looks at the total count
-    # this is only going to work if there isn't a weird rounding thing happening
-    # we could make it more flexible if we needed to
-    if type(count)!=int and  percent!=-1:
-        try:
-            target=float(percent)/100
-            denominator=total_count
-            lowest_possible=Fraction(int(round(target*denominator)), denominator)
-            #print([count, percent, total_count])
-            if lowest_possible.denominator==denominator:
-                newCount=( lowest_possible.numerator)
-            elif denominator % lowest_possible.denominator==0:
-                newCount=(denominator/lowest_possible.denominator * lowest_possible.numerator)  
-            else: 
-                print("something weird happened with fraction rounding!")
-            #print(newCount)
-            equation=count-newCount
-            #print(equation)
-            #print()
-            return(equation)
-        except:
-            pass
+
         
            
     
-fullDF['solved_percentage']=fullDF.apply(lambda x: solveFractionWithDenominator(x['Count'], x['Percent'], x['Total Count']), axis=1)
-fullDF.loc[fullDF['solved_percentage']!=-1]
-equations=fullDF.apply(lambda x: solveFractionWithDenominatorGetVar(x['Count'], x['Percent'], x['Total Count']), axis=1)
-actualEquations=[i for i in equations if i]
-
-# this only works because of a quirk in how the library processes symbols, 
-# where there will never be a value of x- 4 without another row having a value of x
-mySymbols=set([i for i in fullDF['Count'].values if type(i)==sympy.core.symbol.Symbol])
-
-solutions = solve(actualEquations, mySymbols, dict=True)
-# we're getting something weird and broken with actualEquations[2] math az179 - 7.0
-if len(solutions)>0:
-    print("number of people we found via fraction trick")
-    fullDF['Test Test Count']=fullDF.apply(lambda x: applydict(x['Count'], solutions[0]), axis=1)     
-    byGrade=fullDF.loc[(fullDF['file']=="All") & (fullDF['Tested Grade/Subject']!="All")]
-    print(sum([i for i in list(byGrade['Test Test Count']) if type(i)==int])-sum([i for i in    list(byGrade['Count']) if type(i)==int]))
-    fullDF['Count']=fullDF['Test Test Count'] 
-else:
-    print("no fraction trick solutions")
 
 
 # so we can see the answer to this is 3/21 -- we have a total count! 
@@ -511,9 +508,9 @@ fullDF.loc[(fullDF['Percent'].str.contains("%")) & (fullDF['Count'].isin(listOfN
 solvedByGrade=fullDF.loc[(fullDF['Metric Value']=="4 and 5") &  (~fullDF['Count'].isin(listOfNonIntValues))]
 solvedByGrade['Count']=solvedByGrade['Count'].astype(float)
 totalsProf=solvedByGrade.groupby('Tested Grade/Subject').sum()['Count']
-
-# let's look at what's going on at schools with Algebra
 """
+# let's look at what's going on at schools with Algebra
+
 algebraSchools=fullDF.loc[fullDF['Tested Grade/Subject']=="Algebra I"]['School Name'].unique()
 
 # Browne Education Campus - should have figured out that everything that's not solved for math for count for proficiency is 0

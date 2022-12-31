@@ -430,7 +430,7 @@ def solveFractionWithDenominatorGetVar(count, percent, total_count):
         return(int(count))
     
 os.chdir(r"C:\Users\aehaddad\Documents")
-levelsAndProf=getOrGenData(gen=False)
+levelsAndProf=getOrGenData(gen=True)
 testInitialComplete(levelsAndProf)
 initialCount=genMetricsBySchool(levelsAndProf)
 

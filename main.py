@@ -19,10 +19,13 @@ from fractions import Fraction
 """
 INPUTS: 
     
-"schoolevel1.csv"
-"schoolevel2.csv"
-
  '[5] 2021-22 School Level PARCC and MSAA Data edited.xlsx'
+ with tabs: 
+ "Proficiency"
+Performance Level"
+
+OUTPUTS:
+    "levelsAndProf.pkl" file with raw data in it
 """
 def filterInitialData():
     # we're only looking at rows in the data which meet these conditions
@@ -75,25 +78,24 @@ def fillDf(df):
     5) if there are missing values in total count, ???
     
     """
-    df=df.loc[df['Subject']!="ELA"]
+    df=df.loc[df['Subject']=="ELA"]
     missingValues=genMissingValues()
     for value in missingValues:
         df[['Total Count', 'Count']]=df[['Total Count', 'Count']].replace(value, np.NaN)
     df['Total Count']=df.groupby(['School Name', 'Tested Grade/Subject'])['Total Count'].ffill()
     df['Total Count']=df.groupby(['School Name', 'Tested Grade/Subject'])['Total Count'].bfill()
     for schoolName in df['School Name'].unique():
-        subset=df.loc[df['School Name']==schoolName]
-        for j in subset['Metric Value'].unique():
+        schoolData=df.loc[df['School Name']==schoolName]
+        for j in schoolData['Metric Value'].unique():
             try:
-                smaller=subset.loc[(subset['Metric Value']==j)]
-                alls=int(smaller.loc[smaller['Tested Grade/Subject']=="All"]['Total Count'].iloc[0])
-                smalls=smaller.loc[smaller['Tested Grade/Subject']!="All"]['Total Count'].values
-                if len([str(i) for i in smalls if str(i)=="nan"])==1:
-                    values=[int(i) for i in smalls  if str(i)!="nan"]
-                    missing=alls-sum(values)
+                # this fill in some of the missing total count info
+                metricData=schoolData.loc[(schoolData['Metric Value']==j)]
+                nonAllMetricData=int(metricData[metricData['Tested Grade/Subject']!="All"]['Total Count'].values)
+                if len([str(i) for i in  metricData if str(i)=="nan"])==1:
+                    values=[int(i) for i in metricData  if str(i)!="nan"]
+                    missing=nonAllMetricData-sum(values)
                     missingindex=df.loc[(df['School Name']==schoolName) & (df['Metric Value']==j) & (df['Total Count'].isnull())].index[0]
                     df.at[missingindex, 'Total Count']=missing    
-                    print(schoolName)
             except:
                 pass
     df['Total Count']=df.groupby(['School Name', 'Tested Grade/Subject'])['Total Count'].ffill()
@@ -142,10 +144,6 @@ def solveFractionWithDenominatorGetVar(count, percent, total_count):
                 newCount=(denominator/lowest_possible.denominator * lowest_possible.numerator)  
             else: 
                 print("something weird happened with fraction rounding!")
-            #print(newCount)
-            #equation=count-newCount
-            #print(equation)
-            #print()
             return(int(newCount))
         except:
             return(int(count))
@@ -220,7 +218,6 @@ def replaceWithSymbolsAndGenerateEquations(df, schoolNumber):
     equationDict=equationsWithinProficiency(schoolData, equationDict, number)
     return(mySymbols, number, equationDict)
 
-#allForSchool
 def symbolicSolveASchool(schoolData, schoolName, schoolNumber):
     mySymbols, number, equationDict=replaceWithSymbolsAndGenerateEquations(schoolData, schoolNumber)
     valuesInSchoolData=list(schoolData['Count'].values)+list(schoolData['Total Count'].values)
@@ -243,18 +240,17 @@ def symbolicSolveASchool(schoolData, schoolName, schoolNumber):
         schoolData['School Name']=schoolName
         return(schoolData)
     
-def figureOutSums(fullDF):
+def figureOutSums(symbolSolvedSet):
     # how many people do we know the grade and level for?
-    byGrade=fullDF.loc[(fullDF['file']=="All") & (fullDF['Tested Grade/Subject']!="All")]
+    byGrade=symbolSolvedSet.loc[(symbolSolvedSet['file']=="All") & (symbolSolvedSet['Tested Grade/Subject']!="All")]
     sumCountLevel=sum([i for i in list(byGrade['Count']) if type(i)==int])
     # how many people do we know the grade for?
-    byAll=fullDF.loc[(fullDF['file']=="All") & (fullDF['Tested Grade/Subject']=="All")]
+    byAll=symbolSolvedSet.loc[(symbolSolvedSet['file']=="All") & (symbolSolvedSet['Tested Grade/Subject']=="All")]
     uniqueTotal=byAll.groupby(['Tested Grade/Subject', 'School Name']).first()['Total Count']
     sumCount=sum([i for i in uniqueTotal.values if type(i)==int])
     print([sumCountLevel, sumCount])
     
 def testInitialComplete(levelsAndProf):
-
     byGrade=levelsAndProf.loc[(levelsAndProf['file']=="All") & (levelsAndProf['Tested Grade/Subject']!="All")]
     sumCountLevel=sum([i for i in list(byGrade['Count']) if i!=-1])
     byAll=levelsAndProf.loc[(levelsAndProf['file']=="All") & (levelsAndProf['Tested Grade/Subject']=="All")]
@@ -289,8 +285,8 @@ def genData():
     levelsAndProf=concatDatasets(subsetProf, subsetAll)
     levelsAndProf.to_pickle("levelsAndProf.pkl")  
 
-def getOrGenData(gen=False):
-    if gen==True:
+def getOrGenData(generate=False):
+    if generate==True:
         genData()
     try:
         levelsAndProf = pd.read_pickle("levelsAndProf.pkl") 
@@ -312,8 +308,8 @@ def iterateThroughSchoolsSymbolsSolve(levelsAndProf):
             brokenSchools.append(schoolName)
         fullListDF.append(schoolData)
         schoolNumber=schoolNumber+1
-    fullDF=pd.concat(fullListDF)
-    return(fullDF, brokenSchools)
+    symbolSolvedSet=pd.concat(fullListDF)
+    return(symbolSolvedSet, brokenSchools)
 
 def genMetricsBySchool(levelsAndProf):
     metricsBySchool=[]
@@ -325,12 +321,12 @@ def genMetricsBySchool(levelsAndProf):
     metricDF=pd.DataFrame(metricsBySchool, columns=['School', 'Line Count', 'Missing Count'])
     return(metricDF)
 
-def determineNumberMissingSymbols(fullDF):
+def determineNumberMissingSymbols(symbolSolvedSet):
     missingCounts=[]
-    for schoolName in fullDF['School Name'].unique():
+    for schoolName in symbolSolvedSet['School Name'].unique():
     # this does not work FYI but also we don't really need it
-        sample=fullDF.loc[fullDF['School Name']==schoolName]
-        possibleValues=set([i for i in sample['Count'].values if type(i)!=int] + [i for i in sample['Total Count'].values if type(i)!=int])
+        schoolData=symbolSolvedSet.loc[symbolSolvedSet['School Name']==schoolName]
+        possibleValues=set([i for i in schoolData['Count'].values if type(i)!=int] + [i for i in schoolData['Total Count'].values if type(i)!=int])
         symbols=takeSymbolFromList(possibleValues)
         # this is not working becaus it's actually not the case the symbol is always there on its own
         missingCounts.append([schoolName, len(symbols)])
@@ -360,11 +356,10 @@ def takeSymbolFromList(unsolvedValues):
     justPositives=list(set([i for i in plusNegatives if str(i)[0]!="-"]))
     return(justPositives)
 
-def solveIfNMissing(fullDF, schoolName):
-    print(schoolName)
+def solveIfNMissing(symbolSolvedSet, schoolName):
     possibleValues=[]
-    sample=fullDF.loc[fullDF['School Name']==schoolName]
-    unsolvedValues=list(set([i for i in sample['Count'].values if type(i)!=int] + [i for i in sample['Total Count'].values if type(i)!=int] ))
+    schoolData=symbolSolvedSet.loc[symbolSolvedSet['School Name']==schoolName]
+    unsolvedValues=list(set([i for i in schoolData['Count'].values if type(i)!=int] + [i for i in schoolData['Total Count'].values if type(i)!=int] ))
     myVars=takeSymbolFromList(unsolvedValues)
     keepGoing=1
     for number in [i * 5 for i in range(1, 5)]:
@@ -377,15 +372,15 @@ def solveIfNMissing(fullDF, schoolName):
         print(f"hmm {schoolName}")
     return(myVars, possibleValues) 
 
-def getSolvesOnes(fullDF, dfmissing):
+def getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration):
     #this takes schools where there are still missing variables and iterates through their data and tries to solve the remaining symbols
     # the mechanism is that we know every value needs to be >=0; so this sometimes solves the equation
     # sympy is not good at using that inforamtion
-    selectedSchools=dfmissing.loc[(dfmissing['Count of Missing Symbols']<6) & (dfmissing['Count of Missing Symbols']>0)]['School Name']
+    selectedSchools=dfmissing.loc[(dfmissing['Count of Missing Symbols']< maxSymbolsForIteration) & (dfmissing['Count of Missing Symbols']>0)]['School Name']
     dictOfReplacements={}
     listOfPossible=[]
     for schoolName in selectedSchools:
-        myVars, possibleValues=solveIfNMissing(fullDF, schoolName)
+        myVars, possibleValues=solveIfNMissing(symbolSolvedSet, schoolName)
         schoolDF=pd.DataFrame(possibleValues, columns=myVars)
         listOfPossible.append(schoolDF)
     allPossible=pd.concat(listOfPossible)
@@ -397,104 +392,39 @@ def getSolvesOnes(fullDF, dfmissing):
         dictOfReplacements[col]=value
     return(dictOfReplacements)
 
-def applydict(nonintvalue, dictOfReplacements):
+def applydict(value, dictOfReplacements):
     # this takes a value and if it's not an integer, tries to substitute a dictionary of symbol/value pairs into it
-    if type(nonintvalue)!=int:
+    if type(value)!=int:
         try:
-            item=nonintvalue.subs(dictOfReplacements)
+            item=value.subs(dictOfReplacements)
             return(int(item))
         except:
-            return(nonintvalue)
+            return(value)
     else:
-        return(nonintvalue)
+        return(value)
     
-
 
 os.chdir(r"C:\Users\aehaddad\Documents")
-levelsAndProf=getOrGenData(gen=True)
-testInitialComplete(levelsAndProf)
-initialCount=genMetricsBySchool(levelsAndProf)
-levelsAndProf['Count']=levelsAndProf.apply(lambda x: solveFractionWithDenominatorGetVar(x['Count'], x['Percent'], x['Total Count']), axis=1)
+
+def main(generate=False, maxSymbolsForIteration=3):
+    # generates (or loads) data
+    initialDataSet=getOrGenData(generate)
+    # solves what we can solve via using the percentages to find numerators
+    initialDataSet['Count']=initialDataSet.apply(lambda x: solveFractionWithDenominatorGetVar(x['Count'], x['Percent'], x['Total Count']), axis=1)
+    # generates symbols via sympy and solves what can be solved symbolically
+    symbolSolvedSet, brokenSchools=iterateThroughSchoolsSymbolsSolve(initialDataSet)
+    # determines how symbols are still missing per school
+    dfmissing=determineNumberMissingSymbols(symbolSolvedSet)
+    # iterates through to find solutions for the schools with less than maxSymbolsForIteration still missing
+    dictOfReplacements=getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration)
+    # applies the solutions for the variables which got solves
+    symbolSolvedSet['Count']=symbolSolvedSet.apply(lambda x: applydict(x['Count'], dictOfReplacements), axis=1)     
+    symbolSolvedSet['Total Count']=symbolSolvedSet.apply(lambda x: applydict(x['Total Count'], dictOfReplacements), axis=1)  
+    return(symbolSolvedSet)
 
 
-print('post fraction trick')
-afterFractionCount=genMetricsBySchool(levelsAndProf)
+symbolSolvedSet= main(generate=True)
 
 
-fullDF, brokenSchools=iterateThroughSchoolsSymbolsSolve(levelsAndProf)
-figureOutSums(fullDF)
-
-print(initialCount['Missing Count'].sum())
-print(afterFractionCount['Missing Count'].sum())
-finalCount=genMetricsBySchool(fullDF)
-print(finalCount['Missing Count'].sum())
-
-
-dfmissing=determineNumberMissingSymbols(fullDF)
-
-dictOfReplacements=getSolvesOnes(fullDF, dfmissing)
-
-
-# of new ones we filled in 
-
-fullDF['Test Count']=fullDF.apply(lambda x: applydict(x['Count'], dictOfReplacements), axis=1)     
-byGrade=fullDF.loc[(fullDF['file']=="All") & (fullDF['Tested Grade/Subject']!="All")]
-print(sum([i for i in list(byGrade['Test Count']) if type(i)==int])-sum([i for i in list(byGrade['Count']) if type(i)==int]))
-fullDF['Count']=fullDF['Test Count']
-
-# can we get anything from percentages?
-
-dfmissing=determineNumberMissingSymbols(fullDF)
-
-
-
-# non-missing percents
-nonMissingPercent=fullDF.loc[fullDF['Percent']!=-1]
-
-nonMissingPercentMissingValue=determineNumberMissingSymbols(nonMissingPercent) # not accurate!!!
-
-valuesToLookAt=[i for i in nonMissingPercent['Count'].values if type(i)!=int]
-rowswithpercent=nonMissingPercent.loc[nonMissingPercent['Count'].isin(valuesToLookAt)]
-# this unfortunately has some <5%s 
-rowswithpercent=rowswithpercent.loc[~rowswithpercent['Percent'].str.contains("<")]
-schoolExample=rowswithpercent.iloc[0]['School Name']
-
-subsetDF=fullDF.loc[fullDF['School Name']==schoolExample]
-
-
-        
-           
-    
-
-
-# so we can see the answer to this is 3/21 -- we have a total count! 
-
-fullDF.loc[fullDF['Percent']=="<=10%"][['Count','Total Count']]
-
-# what we learn from this is that <=10% sometimes includes <5%
-# this still looks plausibly a thing
-
-fullDF.loc[fullDF['Percent'].str.contains("<5")][['Count', 'Total Count', 'Percent']]
-listOfNonIntValues=[i for i in fullDF['Count'].values if type(i)!=int]
-fullDF.loc[(fullDF['Percent'].str.contains("%")) & (fullDF['Count'].isin(listOfNonIntValues))]['School Name'].unique()
-# there's really not much here with the <percentages
-# in part because we're only seeing them in schools that are super missing
-# for comparing with state totals
-
-solvedByGrade=fullDF.loc[(fullDF['Metric Value']=="4 and 5") &  (~fullDF['Count'].isin(listOfNonIntValues))]
-solvedByGrade['Count']=solvedByGrade['Count'].astype(float)
-totalsProf=solvedByGrade.groupby('Tested Grade/Subject').sum()['Count']
-
-tellWhatThingsTwo=subsetAll.merge(fullDF, left_on=joinCols, right_on=joinCols, how="inner")
-
-for value in ["DS", "n<10", "<=10%"]:
-    subset=tellWhatThingsTwo.loc[tellWhatThingsTwo['Count missing']==value]
-    print(value)
-    items=subset['Count'].unique()
-    #print([i for i in items if type(i)==int])
-    print(len([i for i in items if type(i)!=int]))
-    # n<10 does actually seem to be n<10
-    
-    
 
 

@@ -33,7 +33,38 @@ with tabs
 Performance Level"
 
 OUTPUTS:
-    "levelsAndProf.pkl" file with raw data in it
+    "resultInitial.pkl" file with raw data in it
+    
+    
+Technical Notes/Things That Came Up:
+    
+the solving here takes four parts:
+    -'solving' total counts: this is the most basic part of the code -- we're basically just forward and backward filling missing Total Count data if there is a Total Count given for that school/level somewhere else in the data, or doing some addition'. 
+    this is done in fillDf
+    
+    -taking advantage of the percent data given when count is missing to use fractions to solve for count: this is in 
+    this is done via solveFractionWithDenominatorGetVar
+    
+    -using SymPy to substite missing values for equations, and using the various data relationships having to do with data aggregation to 'solve' the equations when possible
+    this is in iterateThroughSchoolsSymbolsSolve
+    
+    -generating all of the possible remaining options and determining if for any of them, there's only one choice that works. some missing data can still get solved this way because SymPy doesn't really know how to use the fact that none of the values can be <0, so manually adding this constraint and
+    iterating through all possible options can solve some of the remaining data
+    this is in getSolvesOnes
+
+the remaining code here evaluates the degree to which we were able to fill in missing values and tests code
+    
+-The two things that take up a lot of time for running this are:
+    -making a lot of sympy symbols (even if you don't do anything with them but generate them)
+    -generating and testing all the possible options to try to solve equations/variables we're not able to solve via Sympy (basically, iterating through all possible choices)
+    
+    the first issue, we control in the function replaceWithSymbolsAndGenerateEquations
+    the line that controls the number of variables creates is AthroughD=[i for i in keywords if i[0]=="a" or i[0]=="b" or i[0]=="c" or i[0]=="d"]
+    if you needed more variables, you'd go later in the alphabet. (for instance, if we wanted to add in functionality for looking at all the subgroup missing data, which this code currently drops)
+    
+    the second issue, we control via the maxSymbolsForIteration parameter. if you set that higher, it will attempt to solve (and in some cases, solve) unsolved count variables for schools with more data that's still unsolved after trying to solve it mathematically via
+    sympy -- but because it's iterating through every possible option, if you set this higher, it will take a really long time to run -- much longer than everything ele combined'
+    
 """
 def filterInitialData():
     # we're only looking at rows in the data which meet these conditions
@@ -113,50 +144,25 @@ def fillDf(df):
     df['Count'] = pd.to_numeric(df['Count'], errors='coerce')
     return(df[['Tested Grade/Subject', 'Metric Value', 'Count', 'Total Count', 'file', 'Percent','School Name']])
 
-
-def solveFractionWithDenominator(count, percent, total_count):
-    # this takes fractions and looks at the total count
-    # this is only going to work if there isn't a weird rounding thing happening
-    # we could make it more flexible if we needed to
-    if type(count)!=int and  percent!=-1:
-        try:
-            target=float(percent)/100
-            denominator=total_count
-            lowest_possible=Fraction(int(round(target*denominator)), denominator)
-            if lowest_possible.denominator==denominator:
-                return( lowest_possible.numerator)
-            elif denominator % lowest_possible.denominator==0:
-                return(denominator/lowest_possible.denominator * lowest_possible.numerator)   
-            else: 
-                print("something weird happened with fraction rounding!")
-                return(-1)
-        except:
-            return(-1)
-    else:
-        return(-1)
     
 def solveFractionWithDenominatorGetVar(count, percent, total_count):
-    # this is only going to work if the resulting equation has only one variable
-    # this takes fractions and looks at the total count
-    # this is only going to work if there isn't a weird rounding thing happening
-    # we could make it more flexible if we needed to
-    if count==-1 and  percent!=-1:
-        try:
-            target=float(percent)/100
-            denominator=total_count
-            lowest_possible=Fraction(int(round(target*denominator)), denominator)
-            #print([count, percent, total_count])
-            if lowest_possible.denominator==denominator:
-                newCount=( lowest_possible.numerator)
-            elif denominator % lowest_possible.denominator==0:
-                newCount=(denominator/lowest_possible.denominator * lowest_possible.numerator)  
-            else: 
-                print("something weird happened with fraction rounding!")
-            return(int(newCount))
-        except:
-            return(int(count))
-    else:
-        return(int(count))
+    # if we have a correct denominator (total_count), and we have a percent, and we have a missing count, this will return the correct numerator
+    # if the percent and denominator are not consistent, this will return "Unexpected fraction result", which may break the rest of the code
+    # but has not so far been an issue
+    # this is kind of a hacky way of testing to see whether percent is actually a percent
+    if count==-1 and  percent!=-1 and percent[0].isdigit():
+        target=float(percent)/100
+        denominator=total_count
+        # this is returning something even when the numbers aren't correct
+        lowest_possible=Fraction(int(round(target*denominator)), denominator)
+        if round(lowest_possible.numerator/lowest_possible.denominator,2)!=round(target,2):
+            return("Unexpected fraction result")
+        elif lowest_possible.denominator==denominator:
+            count=(lowest_possible.numerator)
+        else:
+            if denominator % lowest_possible.denominator==0:
+                count=(denominator/lowest_possible.denominator * lowest_possible.numerator)  
+    return(int(count))
     
 def replaceWithSymbols(schoolData, mySymbols):   
     # this replaces -1s in Count and Total Count with sympy symbols that are unique to the school and the row #/column
@@ -213,8 +219,8 @@ def replaceWithSymbolsAndGenerateEquations(df, schoolNumber):
     # this generates symbols unique to each school (letters + schoolNumber), replaces the -1s in count and total count with those symbols, and then generates equations representing what we know about
     # the relationships between those numbers/variables
     keywords = [''.join(i) for i in product(ascii_lowercase, repeat = 2)] # you can make more symbols, but this is really what holds up the function and takes tons of time
-    AandB=[i for i in keywords if i[0]=="a" or i[0]=="b" or i[0]=="c" or i[0]=="d"]
-    myString=",".join(AandB)
+    AthroughD=[i for i in keywords if i[0]=="a" or i[0]=="b" or i[0]=="c" or i[0]=="d"]
+    myString=",".join(AthroughD)
     schoolString=myString.replace(",",f'{str(schoolNumber)},')+str(schoolNumber)
     mySymbols=symbols(schoolString, integer=True, nonnegative=True)
     number=0
@@ -258,10 +264,10 @@ def figureOutSums(symbolSolvedSet):
     sumCount=sum([i for i in uniqueTotal.values if type(i)==int])
     print([sumCountLevel, sumCount])
     
-def testInitialComplete(levelsAndProf):
-    byGrade=levelsAndProf.loc[(levelsAndProf['file']=="All") & (levelsAndProf['Tested Grade/Subject']!="All")]
+def testInitialComplete(resultInitial):
+    byGrade=resultInitial.loc[(resultInitial['file']=="All") & (resultInitial['Tested Grade/Subject']!="All")]
     sumCountLevel=sum([i for i in list(byGrade['Count']) if i!=-1])
-    byAll=levelsAndProf.loc[(levelsAndProf['file']=="All") & (levelsAndProf['Tested Grade/Subject']=="All")]
+    byAll=resultInitial.loc[(resultInitial['file']=="All") & (resultInitial['Tested Grade/Subject']=="All")]
     uniqueTotal=byAll.groupby(['Tested Grade/Subject', 'School Name']).first()['Total Count']
     sumCount=sum([i for i in uniqueTotal.values if i!=-1])
     print([sumCountLevel, sumCount])
@@ -275,13 +281,13 @@ def getSymbols(otherValuesLine):
     return(symbols)
 
 def concatDatasets(subsetProf, subsetAll):
-    levelsAndProf=fillDf(pd.concat([subsetProf, subsetAll]))
-    levelsAndProf['countWithinSchool']=levelsAndProf.groupby(['School Name']).cumcount()+1
-    maxCount=levelsAndProf['countWithinSchool'].max()
-    levelsAndProf['totalCountWithinSchool']=levelsAndProf.groupby(['School Name']).cumcount()+maxCount    
-    levelsAndProf['Metric File']=levelsAndProf['Metric Value']+levelsAndProf['file']
-    levelsAndProf['Grade file']=levelsAndProf['Tested Grade/Subject']+levelsAndProf['file']
-    return(levelsAndProf)
+    resultInitial=fillDf(pd.concat([subsetProf, subsetAll]))
+    resultInitial['countWithinSchool']=resultInitial.groupby(['School Name']).cumcount()+1
+    maxCount=resultInitial['countWithinSchool'].max()
+    resultInitial['totalCountWithinSchool']=resultInitial.groupby(['School Name']).cumcount()+maxCount    
+    resultInitial['Metric File']=resultInitial['Metric Value']+resultInitial['file']
+    resultInitial['Grade file']=resultInitial['Tested Grade/Subject']+resultInitial['file']
+    return(resultInitial)
 
 def genData():
     schoolFile='[5] 2021-22 School Level PARCC and MSAA Data edited.xlsx'
@@ -290,26 +296,26 @@ def genData():
     subsetAll=cleanSchoolLevels(schoolFile, schoolLevelTab)
     subsetProf=cleanSchoolProficient(schoolFile, schoolProficientTab)
     subsetProf['Metric Value']="4 and 5"
-    levelsAndProf=concatDatasets(subsetProf, subsetAll)
-    levelsAndProf.to_pickle("levelsAndProf.pkl")  
+    resultInitial=concatDatasets(subsetProf, subsetAll)
+    resultInitial.to_pickle("resultInitial.pkl")  
 
 def getOrGenData(generate=False):
     if generate==True:
         genData()
     try:
-        levelsAndProf = pd.read_pickle("levelsAndProf.pkl") 
+        resultInitial = pd.read_pickle("resultInitial.pkl") 
     except:
         genData()
-    levelsAndProf = pd.read_pickle("levelsAndProf.pkl") 
-    return(levelsAndProf)
+    resultInitial = pd.read_pickle("resultInitial.pkl") 
+    return(resultInitial)
 
-def iterateThroughSchoolsSymbolsSolve(levelsAndProf):
+def iterateThroughSchoolsSymbolsSolve(resultInitial):
     brokenSchools=[]
     fullListDF=[]
     schoolNumber=0
-    schoolNames=list(levelsAndProf['School Name'].unique())
+    schoolNames=list(resultInitial['School Name'].unique())
     for schoolName in schoolNames:  
-        schoolData=levelsAndProf.loc[levelsAndProf['School Name']==schoolName]
+        schoolData=resultInitial.loc[resultInitial['School Name']==schoolName]
         try:
             schoolData=symbolicSolveASchool(schoolData, schoolName, schoolNumber) 
         except:
@@ -319,10 +325,10 @@ def iterateThroughSchoolsSymbolsSolve(levelsAndProf):
     symbolSolvedSet=pd.concat(fullListDF)
     return(symbolSolvedSet, brokenSchools)
 
-def genMetricsBySchool(levelsAndProf):
+def genMetricsBySchool(resultInitial):
     metricsBySchool=[]
-    for schoolName in levelsAndProf['School Name'].unique():
-        schoolData=levelsAndProf.loc[levelsAndProf['School Name']==schoolName]
+    for schoolName in resultInitial['School Name'].unique():
+        schoolData=resultInitial.loc[resultInitial['School Name']==schoolName]
         count=len(schoolData)
         missingCount=count-len([i for i in schoolData['Count'].values if type(i)==int or i==-1])
         metricsBySchool.append([schoolName, count, missingCount])
@@ -515,4 +521,18 @@ totalResult=aggregateCounts()
 populatedCount=totalResult.loc[totalResult['Metric']=="Populated Count"]
 populatedSum=totalResult.loc[totalResult['Metric']=="Populated Sum"]
 
+def testSolveFractionWithDenominatorGetVar():
+    # this tests the fraction-solving function
+    df=pd.DataFrame(data={'Count': [-1, -1, -1, 3], 
+                       'Percent': ["25.00", "28.57", "24.00", "75.00"],
+                 "Total Count": [20, 7, 7, 4]})
+    results=df.apply(lambda x: solveFractionWithDenominatorGetVar(x['Count'], x['Percent'], x['Total Count']), axis=1)
+    if list(results.values)==[5, 2, 'Unexpected fraction result', 3]:
+        print("SolveFractionWithDenominatorGetVar passed tests")
+    else:
+        print("SolveFractionWithDenominatorGetVar failed tests")
+
+
+
+testSolveFractionWithDenominatorGetVar()
 

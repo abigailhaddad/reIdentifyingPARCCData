@@ -509,18 +509,6 @@ def genCleanState():
     stateData=pd.concat([stateLevelsData, stateProficiencyData])
     return(stateData) 
 
-
-initialDataSet=getOrGenData()
-symbolSolvedSet=main()
-
-stateData= genCleanState()
-
-stateCounts=stateData.loc[stateData['Tested Grade/Subject']=="All"].groupby(['Subject', 'file']).sum()[['Count']].reset_index()
-stateCounts=stateCounts.rename(columns={"Count": "Total"})
-totalResult=aggregateCounts()
-populatedCount=totalResult.loc[totalResult['Metric']=="Populated Count"]
-populatedSum=totalResult.loc[totalResult['Metric']=="Populated Sum"]
-
 def testSolveFractionWithDenominatorGetVar():
     # this tests the fraction-solving function
     df=pd.DataFrame(data={'Count': [-1, -1, -1, 3], 
@@ -534,5 +522,62 @@ def testSolveFractionWithDenominatorGetVar():
 
 
 
+initialDataSet=getOrGenData()
+symbolSolvedSet=main()
+
+stateData= genCleanState()
+
+stateCounts=stateData.loc[stateData['Tested Grade/Subject']=="All"].groupby(['Subject', 'file']).sum()[['Count']].reset_index()
+stateCounts=stateCounts.rename(columns={"Count": "Total"})
+totalResult=aggregateCounts()
+populatedCount=totalResult.loc[totalResult['Metric']=="Populated Count"]
+populatedSum=totalResult.loc[totalResult['Metric']=="Populated Sum"]
+
+
 testSolveFractionWithDenominatorGetVar()
 
+proficient=stateData.loc[stateData['file']=="Proficient"]
+proficientELA=proficient.loc[proficient['Subject']=="ELA"][['Tested Grade/Subject', 'Count']]
+"""
+we want to incorporate state data, let's do the smallest set
+
+"""
+subjectAndProficiency=symbolSolvedSet.loc[(symbolSolvedSet["file"]=="Proficiency") & (symbolSolvedSet["Tested Grade/Subject"]!="All")]
+
+nonIntValues=[i for i in subjectAndProficiency['Count'] if type(i)!=int]
+solvedValues=subjectAndProficiency.loc[~subjectAndProficiency['Count'].isin(nonIntValues)]
+solvedValues['Count']=solvedValues['Count'].astype(float)
+countsWeHave=solvedValues.groupby('Tested Grade/Subject').sum()[['Count']]
+
+mergedWithStateELA=countsWeHave.merge(proficientELA, left_index=True, right_on='Tested Grade/Subject')
+mergedWithStateELA['Total Missing']=mergedWithStateELA['Count_y']-mergedWithStateELA['Count_x']
+
+for grade in symbolSolvedSet['Tested Grade/Subject'].unique():
+    if grade!="All":
+        difference=mergedWithStateELA.loc[mergedWithStateELA['Tested Grade/Subject']==grade]['Total Missing']
+        print(grade)
+        print(difference.values[0])
+        subset=symbolSolvedSet.loc[(symbolSolvedSet['Tested Grade/Subject']==grade) & (symbolSolvedSet['file']=="Proficiency")]
+        missings=[i for i in subset['Count'] if type(i)!=int]
+        print(missings)
+        print()
+        print()
+        
+    #grade 4 we're missing 12 students and it's all filled in?
+    # so either something is incorrect in my code, or the data is wrong
+    
+grade="Grade 4"
+grade4=initialDataSet.loc[(initialDataSet['Tested Grade/Subject']==grade) & (initialDataSet['file']=="Proficiency") ]
+grade4solved=symbolSolvedSet.loc[(symbolSolvedSet['Tested Grade/Subject']==grade) & (symbolSolvedSet['file']=="Proficiency")]
+# same length - we didn't lose any schools
+initiallyMissingSchools=grade4.loc[grade4['Count']==-1]['School Name'].unique()
+grade4solved.loc[grade4solved['School Name'].isin(initiallyMissingSchools)]
+
+testOut=grade4solved.loc[grade4solved['School Name'].isin(initiallyMissingSchools)][['Count', 'Total Count', 'Percent']]
+testOut['gen percent']=testOut['Count']/testOut['Total Count']
+# these all look good
+# the only possible wrong ones are the ones with <s
+# and those look good too
+# could those be 12 bigger?
+possibly=testOut.loc[testOut["Percent"].str.contains("<")]
+# 

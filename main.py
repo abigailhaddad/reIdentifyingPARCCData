@@ -5,22 +5,30 @@
 
 #%pip install sympy
 #%pip install openpxyl
+#%pip install plotly
+#%pip install plotnine
 
 from sympy import symbols, Eq, solve, GreaterThan
 import pandas as pd
 import numpy as np
 import os
 import sympy
-pd.options.mode.chained_assignment = None
 import numpy as np
 from itertools import product
 from string import ascii_lowercase
 from fractions import Fraction
+import plotnine
+pd.options.mode.chained_assignment = None
 """
 INPUTS: 
     
  '[5] 2021-22 School Level PARCC and MSAA Data edited.xlsx'
  with tabs: 
+ "Proficiency"
+Performance Level"
+
+"[3] 2021-22 State Level PARCC and MSAA Data.xlsx"
+with tabs 
  "Proficiency"
 Performance Level"
 
@@ -423,8 +431,88 @@ def main(generate=False, maxSymbolsForIteration=3):
     return(symbolSolvedSet)
 
 
-symbolSolvedSet= main(generate=True)
+"""
+number of people who we know their subject, level, and school
+number of people who we know their subject, proficiency, and school
+number of people who we know their level and school
+number of people who we know their proficiency and school
+
+same, but with symbols
+
+"""
+
+def getMetricsFromSubset(df):
+    populated=[i for i in df['Count'] if i!=-1 and type(i)==int]
+    populatedCount=len(populated)/len(df)
+    populatedSum=sum(populated)
+    return(populatedCount, populatedSum)
+    
+    
+def getCounts(df):
+    subjectAndLevel=df.loc[(df["file"]=="All") & (df["Tested Grade/Subject"]!="All")]
+    subjectAndProficiency=df.loc[(df["file"]=="Proficiency") & (df["Tested Grade/Subject"]!="All")]
+    level=df.loc[(df["file"]=="All") & (df["Tested Grade/Subject"]=="All")]
+    proficiency=df.loc[(df["file"]=="Proficiency") & (df["Tested Grade/Subject"]=="All")]
+    resultDict={"Subject and Level": getMetricsFromSubset(subjectAndLevel),
+                "Subject and Proficient": getMetricsFromSubset(subjectAndProficiency),
+                "Level":getMetricsFromSubset(level),
+               "Proficient": getMetricsFromSubset(proficiency) }
+    return(resultDict)
 
 
+def aggregateCounts():
+    # this kind of is a thing
+    resultInitial=pd.DataFrame(getCounts(initialDataSet))
+    resultInitial.index=["Populated Count", "Populated Sum"]
+    resultFinal=pd.DataFrame(getCounts(symbolSolvedSet))
+    resultFinal.index=["Populated Count", "Populated Sum"]
+    initial=resultInitial.unstack().reset_index()
+    initial['type']="Initial"
+    final=resultFinal.unstack().reset_index()
+    final['type']="Final"
+    totalResult=pd.concat([initial, final])
+    totalResult.columns=["Population", "Metric", "Count", "Type"]
+    return(totalResult)
+
+
+    
+def genCleanState():
+    """
+    1) reads in the csv with state-level data as a df
+    2) subsets it to just the populations we're interested in
+    3) adds a 'file' column to show it came from the state data
+    4) makes the count into a float
+    """
+    stateDict={"Assessment Name": "PARCC",
+               "Student Group": "All",
+               "Grade of Enrollment": "All"} 
+
+    stateProficiencyData=pd.read_excel("[3] 2021-22 State Level PARCC and MSAA Data.xlsx", "Proficiency")
+    stateLevelsData=pd.read_excel("[3] 2021-22 State Level PARCC and MSAA Data.xlsx", "Performance Level")
+    
+    for item in list(stateDict.keys()):
+        stateProficiencyData=stateProficiencyData.loc[stateProficiencyData[item]==stateDict[item]]
+        stateLevelsData=stateLevelsData.loc[stateLevelsData[item]==stateDict[item]]
+        
+    stateProficiencyData['Count']=stateProficiencyData['Count'].astype(float)
+    stateLevelsData['Count']=stateLevelsData['Count'].astype(float)
+    stateProficiencyData=stateProficiencyData[['Tested Grade/Subject', 'Count', 'Subject']]
+    stateProficiencyData['file']="Proficient"
+    stateLevelsData=stateLevelsData[['Tested Grade/Subject', 'Count', 'Subject', 'metric_value']]
+    stateLevelsData['file']="Level"
+    stateData=pd.concat([stateLevelsData, stateProficiencyData])
+    return(stateData) 
+
+
+initialDataSet=getOrGenData()
+symbolSolvedSet=main()
+
+stateData= genCleanState()
+
+stateCounts=stateData.loc[stateData['Tested Grade/Subject']=="All"].groupby(['Subject', 'file']).sum()[['Count']].reset_index()
+stateCounts=stateCounts.rename(columns={"Count": "Total"})
+totalResult=aggregateCounts()
+populatedCount=totalResult.loc[totalResult['Metric']=="Populated Count"]
+populatedSum=totalResult.loc[totalResult['Metric']=="Populated Sum"]
 
 

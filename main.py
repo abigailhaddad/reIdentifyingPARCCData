@@ -18,6 +18,7 @@ from itertools import product
 from string import ascii_lowercase
 from fractions import Fraction
 import plotnine
+import math
 pd.options.mode.chained_assignment = None
 """
 INPUTS: 
@@ -562,103 +563,4 @@ for grade in symbolSolvedSet['Tested Grade/Subject'].unique():
         print(missings)
         print()
         print()
-        
-    #grade 4 we're missing 12 students and it's all filled in?
-    # so either something is incorrect in my code, or the data is wrong
     
-grade="Grade 4"
-grade4=initialDataSet.loc[(initialDataSet['Tested Grade/Subject']==grade) & (initialDataSet['file']=="Proficiency") ]
-grade4solved=symbolSolvedSet.loc[(symbolSolvedSet['Tested Grade/Subject']==grade) & (symbolSolvedSet['file']=="Proficiency")]
-# same length - we didn't lose any schools
-initiallyMissingSchools=grade4.loc[grade4['Count']==-1]['School Name'].unique()
-grade4solved.loc[grade4solved['School Name'].isin(initiallyMissingSchools)]
-
-testOut=grade4solved.loc[grade4solved['School Name'].isin(initiallyMissingSchools)][['Count', 'Total Count', 'Percent']]
-testOut['gen percent']=testOut['Count']/testOut['Total Count']
-# these all look good
-# the only possible wrong ones are the ones with <s
-# and those look good too
-# could those be 12 bigger?
-possibly=testOut.loc[testOut["Percent"].str.contains("<")]
-
-
-def showFourthGradeIssue():
-    """
-    The steps here are:
-        1. Get total count from the state data for # of ELA PARCC proficient fourth graders
-        2. Get initial (with redactions) school-wide data for this group
-        3. Get total counts by school for 4th grade ELA using the levels data
-        4. Merge this in; show that the methodology works
-    """
-    fourthGradeELAProficiencybyState=genFourthGradeELAProficiencybyState()
-    fourthGradeELAProficiencybySchool=genFourthGradeELAProficiencybySchool()
-    totalCountsForFourthGradeELAbySchool=genTotalCountsForFourthGradeELAbySchool()
-    mergedForTotalCounts=fourthGradeELAProficiencybySchool.merge(totalCountsForFourthGradeELAbySchool, left_on="School Name", right_on="School Name")
-    # here we're saying: if the only Total Counts which are different between the Levels and Proficiency file are those which were initially redacted ("DS") in the proficiency file,
-    # this confirms our methodology for imputing Total Count
-    differences=list(mergedForTotalCounts.loc[mergedForTotalCounts['Total Count']!=mergedForTotalCounts['Total Count Imputation From Levels File']]['Total Count'].unique())
-    if differences==["DS"]:
-        print("Methodology is working for Total Count")
-    else:
-        print("Methdology is not working for Total Count")
-
-def genGreatestPossibleNumber(count, percent, total_count):
-    # if we have the count value already (it's not DS), this returns that value
-    if count!="DS":
-        return(count)
-    # if we don't have count but we do have percent, this calculates the count and returns that
-    
-
-def genFourthGradeELAProficiencybySchool():
-    schoolFile='[5] 2021-22 School Level PARCC and MSAA Data.xlsx'
-    schoolProficientTab="Proficiency"
-    df=pd.read_excel(schoolFile, schoolProficientTab)
-    filterDict={"Assessment Name": "PARCC",
-               "Grade of Enrollment": "All",
-               "Student group": "All",
-               'Tested Grade/Subject': "Grade 4",
-              "Subject": "ELA"}
-    for item in list(filterDict.keys()):
-        df=df.loc[df[item]==filterDict[item]]
-    return(df)
-        
-def genFourthGradeELAProficiencybyState():
-    # this returns the number of 4th graders testing proficient in ELA state-wide on the PARCC
-    stateFile="[3] 2021-22 State Level PARCC and MSAA Data.xlsx"
-    stateProficientTab="Proficiency"
-    df=pd.read_excel(stateFile, stateProficientTab)
-    # we're subsetting on each variable that's the key in these key-value pairs to get just the data that = the value
-    filterDict={"Assessment Name": "PARCC",
-               "Student Group": "All",
-               "Grade of Enrollment": "All",
-               'Tested Grade/Subject': "Grade 4",
-              "Subject": "ELA"} 
-    stateProficiencyData=pd.read_excel(stateFile, stateProficientTab)
-    for item in list(filterDict.keys()):
-        df=df.loc[df[item]==filterDict[item]]
-    return(int(df['Count'].iloc[0]))
-    
-def genTotalCountsForFourthGradeELAbySchool():
-    # some of the Total Counts are missing for the school-level proficiency data;
-    # so we get them from the levels data
-    schoolFile='[5] 2021-22 School Level PARCC and MSAA Data.xlsx'
-    schoolLevelTab="Performance Level"
-    df=pd.read_excel(schoolFile, schoolLevelTab)
-    filterDict={"Assessment Name": "PARCC",
-               "Grade of Enrollment": "All",
-               "Student group": "All",
-               'Tested Grade/Subject': "Grade 4",
-              "Subject": "ELA"}
-    for item in list(filterDict.keys()):
-        df=df.loc[df[item]==filterDict[item]]
-    # we drop the missing (DS) values
-    df=df.loc[df['Total Count']!="DS"]
-    fourthGradeELATotalCount=df.groupby('School Name').first()[['Total Count']].reset_index()
-    fourthGradeELATotalCount.columns=["School Name", "Total Count Imputation From Levels File"]
-    return(fourthGradeELATotalCount)
-    
-
-
-
-    
-

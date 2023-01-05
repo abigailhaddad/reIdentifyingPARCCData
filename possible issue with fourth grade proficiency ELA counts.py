@@ -1,20 +1,7 @@
-
-"""
-
-
-
-"""
-
-%pip install xlsxwriter
-
 import pandas as pd
-import numpy as np
 import os
-import numpy as np
-from string import ascii_lowercase
 from fractions import Fraction
 import math
-import xlsxwriter
 
 def solveFractionWithDenominatorGetVar(count, percent, total_count):
     # if we have a correct denominator (total_count), and we have a percent, and we have a missing count, this will return the correct numerator
@@ -72,7 +59,7 @@ def genGreatestPossibleNumber(count, percent, total_count):
         pass
     elif percent=="<5%":
         count=math.floor(.05* total_count)
-    elif percent=="<10%":
+    elif percent=="<=10%":
         count=math.floor(.1* total_count)
     else:
         count=solveFractionWithDenominatorGetVar(-1, percent, total_count)
@@ -103,7 +90,6 @@ def genFourthGradeELAProficiencybyState():
                "Grade of Enrollment": "All",
                'Tested Grade/Subject': "Grade 4",
               "Subject": "ELA"} 
-    stateProficiencyData=pd.read_excel(stateFile, stateProficientTab)
     for item in list(filterDict.keys()):
         df=df.loc[df[item]==filterDict[item]]
     return(int(df['Count'].iloc[0]))
@@ -127,11 +113,12 @@ def genTotalCountsForFourthGradeELAbySchool():
     fourthGradeELATotalCount.columns=["School Name", "Total Count Imputation From Levels File"]
     return(fourthGradeELATotalCount)
     
-os.chdir(r"C:\Users\aehaddad\Documents")
+#os.chdir(r"C:\Users\aehaddad\Documents")
+os.chdir(r"C:\Users\abiga\OneDrive\Documents\Python Scripts\parcc\data")
 sumDF, fourthGradeProficiencyELAData=showFourthGradeIssue()
 
 
-writer = pd.ExcelWriter('Fourth Grade ELA Proficiency Sums.xlsx', engine='xlsxwriter')
+writer = pd.ExcelWriter('Fourth Grade ELA Proficiency Sums.xlsx')
 
 # Write each dataframe to a different worksheet.
 sumDF.to_excel(writer, sheet_name='Totals')

@@ -8,17 +8,14 @@
 #%pip install plotly
 #%pip install plotnine
 
-from sympy import symbols, Eq, solve, GreaterThan
+from sympy import symbols, Eq, solve
 import pandas as pd
 import numpy as np
 import os
 import sympy
-import numpy as np
 from itertools import product
 from string import ascii_lowercase
 from fractions import Fraction
-import plotnine
-import math
 pd.options.mode.chained_assignment = None
 """
 INPUTS: 
@@ -419,7 +416,6 @@ def applydict(value, dictOfReplacements):
         return(value)
     
 
-os.chdir(r"C:\Users\aehaddad\Documents")
 
 def main(generate=False, maxSymbolsForIteration=3):
     # generates (or loads) data
@@ -522,6 +518,7 @@ def testSolveFractionWithDenominatorGetVar():
         print("SolveFractionWithDenominatorGetVar failed tests")
 
 
+os.chdir(r"C:\Users\abiga\OneDrive\Documents\Python Scripts\parccrename\data")
 
 initialDataSet=getOrGenData(True)
 symbolSolvedSet=main()
@@ -564,3 +561,46 @@ for grade in symbolSolvedSet['Tested Grade/Subject'].unique():
         print()
         print()
     
+    
+# just getting some numbers to use for fractional solving
+
+counts=symbolSolvedSet[['School Name', 'Tested Grade/Subject']].drop_duplicates().groupby("School Name").count()
+twos=counts.loc[counts['Tested Grade/Subject']==4].index
+profTwos=symbolSolvedSet.loc[(symbolSolvedSet['School Name'].isin(twos))  & (symbolSolvedSet['file']=="Proficiency") ]
+
+schoolSet=profTwos[['Count', 'School Name',  'Tested Grade/Subject', 'Total Count', 'Percent' ]]
+
+bard=schoolSet.head(3)
+bard['Percent']=bard['Percent'].apply(float).apply(round)
+
+maya=schoolSet.loc[schoolSet['School Name']=="Maya Angelou PCS - High School"]
+maya['Percent']=maya['Percent'].apply(float).apply(round)
+
+# this is going to be a really hard one!
+
+def divide_by(x, y):
+    if y==0:
+        return("no")
+    if (x==0 and y==0):
+        return(0)
+    else:
+        return(round(x*100/y,2))
+    
+def takeSchoolGetNumbers(symbolSolvedSet, schoolName):
+    schoolData=symbolSolvedSet.loc[(symbolSolvedSet['School Name']==schoolName)  & (symbolSolvedSet['file']=="Proficiency") ][['Count', 'School Name',  'Tested Grade/Subject', 'Total Count', 'Percent' ]]
+    total_count=schoolData.loc[schoolData['Tested Grade/Subject']=="All"]['Total Count'].iloc[0]
+    total_percent=float(schoolData.loc[schoolData['Tested Grade/Subject']=="All"]['Percent'].iloc[0])
+    list_of_subpercents=[float(i) for i in schoolData.loc[schoolData['Tested Grade/Subject']!="All"]['Percent'] ]
+
+def canWeSolve(total_count, total_percent, list_of_subpercents):
+    # we can generate some possible options
+    denominatorPairs=[i for i in product(range(0,total_count+1), repeat = len(list_of_subpercents)) if sum(i)==total_count]
+    count=round(total_percent*total_count/100)
+    numeratorPairs=[i for i in product(range(0,count+1), repeat = len(list_of_subpercents)) if sum(i)==count]
+    options=[]
+    for denominator in denominatorPairs:
+        for numerator in numeratorPairs:
+            fraction = [divide_by(x, y) for x, y in zip(map(int, numerator), map(int, denominator))]
+            if fraction==list_of_subpercents:
+                options.append([numerator, denominator])
+    return(options)

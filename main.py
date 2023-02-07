@@ -105,7 +105,7 @@ def cleanSchoolLevels(schoolFile, schoolLevelTab):
     colsToKeep=['School Name', 'Subject', 'Tested Grade/Subject', 'Metric Value', 'Count', 'Total Count', 'file', 'Percent']
     return(schoolLevelData[colsToKeep])
     
-def fillDf(df):
+def fillDf(df, ELA):
 
     """
     1) Takes a df with missing data for Count and Total Count (where missing can be DS, n<10, or <10%, as seen in genMissingValues)
@@ -115,7 +115,11 @@ def fillDf(df):
     5) if there are missing values in total count, ???
     
     """
-    df=df.loc[df['Subject']=="ELA"]
+    if ELA==True:
+        df=df.loc[df['Subject']=="ELA"]
+    else:
+        df=df.loc[df['Subject']!="ELA"]
+        print("math")
     missingValues=genMissingValues()
     for value in missingValues:
         df[['Total Count', 'Count']]=df[['Total Count', 'Count']].replace(value, np.NaN)
@@ -196,6 +200,26 @@ def equationsByTotalCountbyGrade(df, equationDict, number):
         equationDict[number]= Eq((myEquation), totalMetric)
     return(equationDict, number)
 
+def equationsTotalCounts(df, equationDict, number):
+    number=number+1
+    totalMetric=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']=="All")]['Total Count'].iloc[0]
+    myEquation=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']!="All")]['Total Count'].values.sum()
+    equationDict[number]= Eq((myEquation), totalMetric)
+    if equationDict[number]==False:
+        print([df['School Name'].iloc[0]])
+
+    return(equationDict, number)
+
+def equationsTotalCountSubject(df, equationDict, number):
+    nonAlls=[i for i in df['Tested Grade/Subject'].unique() if i!='All']
+    for subject in nonAlls:
+        for level in list(df['Metric Value'].unique()):
+            number=number+1
+            totalMetric=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']==subject)]['Total Count'].iloc[0]
+            myEquation=df.loc[(df['Metric Value']==level) & (df['Tested Grade/Subject']==subject)]['Total Count'].iloc[0]
+            equationDict[number]= Eq((myEquation), totalMetric)
+    return(equationDict, number)
+
 def equationsByProficientAndLevels(df, equationDict, number):
     for i in list(df.loc[df['file']=="Proficiency"]['Tested Grade/Subject'].unique()):
         # here we say: overall proficiency number is the sum of level 4 and 5
@@ -226,7 +250,9 @@ def replaceWithSymbolsAndGenerateEquations(df, schoolNumber):
     equationDict={}
     equationDict, number=equationsByMetricFile(schoolData, equationDict, number)
     equationDict, number=equationsByTotalCountbyGrade(schoolData, equationDict, number)
+    equationDict, number=equationsTotalCounts(schoolData, equationDict, number)
     equationDict, number=equationsByProficientAndLevels(schoolData, equationDict, number)
+    equationDict, number=equationsTotalCountSubject(schoolData, equationDict, number)
     equationDict=equationsWithinProficiency(schoolData, equationDict, number)
     return(mySymbols, number, equationDict)
 
@@ -278,8 +304,8 @@ def getSymbols(otherValuesLine):
     symbols=symbols+([i*-1 for i in list(sum(args, ())) if  type(i)==sympy.core.mul.Mul])
     return(symbols)
 
-def concatDatasets(subsetProf, subsetAll):
-    resultInitial=fillDf(pd.concat([subsetProf, subsetAll]))
+def concatDatasets(subsetProf, subsetAll, ELA):
+    resultInitial=fillDf(pd.concat([subsetProf, subsetAll]), ELA)
     resultInitial['countWithinSchool']=resultInitial.groupby(['School Name']).cumcount()+1
     maxCount=resultInitial['countWithinSchool'].max()
     resultInitial['totalCountWithinSchool']=resultInitial.groupby(['School Name']).cumcount()+maxCount    
@@ -287,23 +313,23 @@ def concatDatasets(subsetProf, subsetAll):
     resultInitial['Grade file']=resultInitial['Tested Grade/Subject']+resultInitial['file']
     return(resultInitial)
 
-def genData():
+def genData(ELA):
     schoolFile='[5] 2021-22 School Level PARCC and MSAA Data.xlsx'
     schoolProficientTab="Proficiency"
     schoolLevelTab="Performance Level"
     subsetAll=cleanSchoolLevels(schoolFile, schoolLevelTab)
     subsetProf=cleanSchoolProficient(schoolFile, schoolProficientTab)
     subsetProf['Metric Value']="4 and 5"
-    resultInitial=concatDatasets(subsetProf, subsetAll)
+    resultInitial=concatDatasets(subsetProf, subsetAll, ELA)
     resultInitial.to_pickle("resultInitial.pkl")  
 
-def getOrGenData(generate=False):
+def getOrGenData(generate=False, ELA=True):
     if generate==True:
-        genData()
+        genData(ELA)
     try:
         resultInitial = pd.read_pickle("resultInitial.pkl") 
     except:
-        genData()
+        genData(ELA)
     resultInitial = pd.read_pickle("resultInitial.pkl") 
     return(resultInitial)
 
@@ -402,7 +428,7 @@ def getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration):
     for col in dfValues.columns:
         value=[i for i in dfValues[col].values if str(i)!="nan"][0]
         dictOfReplacements[col]=value
-    return(dictOfReplacements)
+    return(dictOfReplacements, allPossible)
 
 def applydict(value, dictOfReplacements):
     # this takes a value and if it's not an integer, tries to substitute a dictionary of symbol/value pairs into it
@@ -417,9 +443,9 @@ def applydict(value, dictOfReplacements):
     
 
 
-def main(generate=False, maxSymbolsForIteration=3):
+def main(ELA, generate=False, maxSymbolsForIteration=7):
     # generates (or loads) data
-    initialDataSet=getOrGenData(generate)
+    initialDataSet=getOrGenData(generate, ELA)
     # solves what we can solve via using the percentages to find numerators
     initialDataSet['Count']=initialDataSet.apply(lambda x: solveFractionWithDenominatorGetVar(x['Count'], x['Percent'], x['Total Count']), axis=1)
     # generates symbols via sympy and solves what can be solved symbolically
@@ -427,11 +453,11 @@ def main(generate=False, maxSymbolsForIteration=3):
     # determines how symbols are still missing per school
     dfmissing=determineNumberMissingSymbols(symbolSolvedSet)
     # iterates through to find solutions for the schools with less than maxSymbolsForIteration still missing
-    dictOfReplacements=getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration)
+    dictOfReplacements, allPossible=getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration)
     # applies the solutions for the variables which got solves
     symbolSolvedSet['Count']=symbolSolvedSet.apply(lambda x: applydict(x['Count'], dictOfReplacements), axis=1)     
     symbolSolvedSet['Total Count']=symbolSolvedSet.apply(lambda x: applydict(x['Total Count'], dictOfReplacements), axis=1)  
-    return(symbolSolvedSet)
+    return(symbolSolvedSet, allPossible)
 
 
 """
@@ -463,7 +489,7 @@ def getCounts(df):
     return(resultDict)
 
 
-def aggregateCounts():
+def aggregateCounts( ):
     # this kind of is a thing
     resultInitial=pd.DataFrame(getCounts(initialDataSet))
     resultInitial.index=["Populated Count", "Populated Sum"]
@@ -478,129 +504,81 @@ def aggregateCounts():
     return(totalResult)
 
 
-    
-def genCleanState():
-    """
-    1) reads in the csv with state-level data as a df
-    2) subsets it to just the populations we're interested in
-    3) adds a 'file' column to show it came from the state data
-    4) makes the count into a float
-    """
-    stateDict={"Assessment Name": "PARCC",
-               "Student Group": "All",
-               "Grade of Enrollment": "All"} 
-
-    stateProficiencyData=pd.read_excel("[3] 2021-22 State Level PARCC and MSAA Data.xlsx", "Proficiency")
-    stateLevelsData=pd.read_excel("[3] 2021-22 State Level PARCC and MSAA Data.xlsx", "Performance Level")
-    
-    for item in list(stateDict.keys()):
-        stateProficiencyData=stateProficiencyData.loc[stateProficiencyData[item]==stateDict[item]]
-        stateLevelsData=stateLevelsData.loc[stateLevelsData[item]==stateDict[item]]
-        
-    stateProficiencyData['Count']=stateProficiencyData['Count'].astype(float)
-    stateLevelsData['Count']=stateLevelsData['Count'].astype(float)
-    stateProficiencyData=stateProficiencyData[['Tested Grade/Subject', 'Count', 'Subject']]
-    stateProficiencyData['file']="Proficient"
-    stateLevelsData=stateLevelsData[['Tested Grade/Subject', 'Count', 'Subject', 'metric_value']]
-    stateLevelsData['file']="Level"
-    stateData=pd.concat([stateLevelsData, stateProficiencyData])
-    return(stateData) 
-
-def testSolveFractionWithDenominatorGetVar():
-    # this tests the fraction-solving function
-    df=pd.DataFrame(data={'Count': [-1, -1, -1, 3], 
-                       'Percent': ["25.00", "28.57", "24.00", "75.00"],
-                 "Total Count": [20, 7, 7, 4]})
-    results=df.apply(lambda x: solveFractionWithDenominatorGetVar(x['Count'], x['Percent'], x['Total Count']), axis=1)
-    if list(results.values)==[5, 2, 'Unexpected fraction result', 3]:
-        print("SolveFractionWithDenominatorGetVar passed tests")
-    else:
-        print("SolveFractionWithDenominatorGetVar failed tests")
-
-
 os.chdir(r"C:\Users\abiga\OneDrive\Documents\Python Scripts\parccrename\data")
 
-initialDataSet=getOrGenData(True)
-symbolSolvedSet=main()
-
-stateData= genCleanState()
-
-stateCounts=stateData.loc[stateData['Tested Grade/Subject']=="All"].groupby(['Subject', 'file']).sum()[['Count']].reset_index()
-stateCounts=stateCounts.rename(columns={"Count": "Total"})
-totalResult=aggregateCounts()
-populatedCount=totalResult.loc[totalResult['Metric']=="Populated Count"]
-populatedSum=totalResult.loc[totalResult['Metric']=="Populated Sum"]
-
-
-testSolveFractionWithDenominatorGetVar()
-
-proficient=stateData.loc[stateData['file']=="Proficient"]
-proficientELA=proficient.loc[proficient['Subject']=="ELA"][['Tested Grade/Subject', 'Count']]
-"""
-we want to incorporate state data, let's do the smallest set
-
-"""
-subjectAndProficiency=symbolSolvedSet.loc[(symbolSolvedSet["file"]=="Proficiency") & (symbolSolvedSet["Tested Grade/Subject"]!="All")]
-
-nonIntValues=[i for i in subjectAndProficiency['Count'] if type(i)!=int]
-solvedValues=subjectAndProficiency.loc[~subjectAndProficiency['Count'].isin(nonIntValues)]
-solvedValues['Count']=solvedValues['Count'].astype(float)
-countsWeHave=solvedValues.groupby('Tested Grade/Subject').sum()[['Count']]
-
-mergedWithStateELA=countsWeHave.merge(proficientELA, left_index=True, right_on='Tested Grade/Subject')
-mergedWithStateELA['Total Missing']=mergedWithStateELA['Count_y']-mergedWithStateELA['Count_x']
-
-for grade in symbolSolvedSet['Tested Grade/Subject'].unique():
-    if grade!="All":
-        difference=mergedWithStateELA.loc[mergedWithStateELA['Tested Grade/Subject']==grade]['Total Missing']
-        print(grade)
-        print(difference.values[0])
-        subset=symbolSolvedSet.loc[(symbolSolvedSet['Tested Grade/Subject']==grade) & (symbolSolvedSet['file']=="Proficiency")]
-        missings=[i for i in subset['Count'] if type(i)!=int]
-        print(missings)
-        print()
-        print()
-    
-    
-# just getting some numbers to use for fractional solving
-
-counts=symbolSolvedSet[['School Name', 'Tested Grade/Subject']].drop_duplicates().groupby("School Name").count()
-twos=counts.loc[counts['Tested Grade/Subject']==4].index
-profTwos=symbolSolvedSet.loc[(symbolSolvedSet['School Name'].isin(twos))  & (symbolSolvedSet['file']=="Proficiency") ]
-
-schoolSet=profTwos[['Count', 'School Name',  'Tested Grade/Subject', 'Total Count', 'Percent' ]]
-
-bard=schoolSet.head(3)
-bard['Percent']=bard['Percent'].apply(float).apply(round)
-
-maya=schoolSet.loc[schoolSet['School Name']=="Maya Angelou PCS - High School"]
-maya['Percent']=maya['Percent'].apply(float).apply(round)
-
-# this is going to be a really hard one!
-
-def divide_by(x, y):
-    if y==0:
-        return("no")
-    if (x==0 and y==0):
-        return(0)
+def getBothSubjects(generate=True):
+    if generate==True:
+        Math, allPossibleMath=main(ELA=False, generate=True)
+        Math['OverallSubject']="Math"
+        ELA, allPossibleELA=main(ELA=True, generate=True)
+        ELA['OverallSubject']="ELA"
+        allPossible=pd.concat([allPossibleMath,allPossibleELA])
+        cleanedData=pd.concat([ELA, Math])
+        cleanedData.to_pickle("resultFinal.pkl") 
+        allPossible.to_pickle("allOptions.pkl")
     else:
-        return(round(x*100/y,2))
+        cleanedData=pd.read_pickle("resultFinal.pkl")
+        allPossible=pd.read_pickle("allOptions.pkl")
+    return(cleanedData, allPossible)
     
-def takeSchoolGetNumbers(symbolSolvedSet, schoolName):
-    schoolData=symbolSolvedSet.loc[(symbolSolvedSet['School Name']==schoolName)  & (symbolSolvedSet['file']=="Proficiency") ][['Count', 'School Name',  'Tested Grade/Subject', 'Total Count', 'Percent' ]]
-    total_count=schoolData.loc[schoolData['Tested Grade/Subject']=="All"]['Total Count'].iloc[0]
-    total_percent=float(schoolData.loc[schoolData['Tested Grade/Subject']=="All"]['Percent'].iloc[0])
-    list_of_subpercents=[float(i) for i in schoolData.loc[schoolData['Tested Grade/Subject']!="All"]['Percent'] ]
+bothSubjects, allPossible=getBothSubjects()
 
-def canWeSolve(total_count, total_percent, list_of_subpercents):
-    # we can generate some possible options
-    denominatorPairs=[i for i in product(range(0,total_count+1), repeat = len(list_of_subpercents)) if sum(i)==total_count]
-    count=round(total_percent*total_count/100)
-    numeratorPairs=[i for i in product(range(0,count+1), repeat = len(list_of_subpercents)) if sum(i)==count]
-    options=[]
-    for denominator in denominatorPairs:
-        for numerator in numeratorPairs:
-            fraction = [divide_by(x, y) for x, y in zip(map(int, numerator), map(int, denominator))]
-            if fraction==list_of_subpercents:
-                options.append([numerator, denominator])
-    return(options)
+
+# does it look like all the sixth graders are taking the sixth grade math test?
+
+# look at total count numbers at Washington Latin
+LatinOverall=bothSubjects.loc[(bothSubjects['School Name']=="Washington Latin PCS - Middle School") & (bothSubjects['file']!="All")]
+
+# are we not trying to solve the total counts??
+# reshape get total count by school
+
+
+
+"Kramer Middle School"
+
+kramer=bothSubjects.loc[(bothSubjects['School Name']=="Kramer Middle School") & (bothSubjects['file']!="All")]
+
+# how many schools do we have all of these filled in for?
+# E.L. Haynes PCS - Middle School is missing geometry and algebra I
+
+mann=bothSubjects.loc[(bothSubjects['School Name']=="Mann Elementary School") & (bothSubjects['file']!="All")]
+
+def MSMath(bothSubjects):
+    # looking at the math 8th graders take -- can't look at combined MS/HS because many 9th graders take algebra
+    algebraSchools=list(bothSubjects.loc[bothSubjects['Tested Grade/Subject']=="Algebra I"]['School Name'].unique())
+    grade7Schools=list(bothSubjects.loc[bothSubjects['Tested Grade/Subject']=="Grade 7"]['School Name'].unique())
+    highschool=list(bothSubjects.loc[bothSubjects['Tested Grade/Subject']=="English I"]['School Name'].unique())
+    middleSchools=[i for i in grade7Schools if i in algebraSchools and i not in highschool]
+    mathAtMiddleSchools=bothSubjects.loc[(bothSubjects['OverallSubject']=="Math") & (bothSubjects['School Name'].isin(middleSchools))]
+    allsMath=mathAtMiddleSchools.loc[(mathAtMiddleSchools['OverallSubject']=="Math") & (mathAtMiddleSchools['file']!="All")]
+    return(allsMath)
+
+allsMath=MSMath(bothSubjects)
+
+def genPassRates(allsMath, keepClasses):
+    allsMathCounts=allsMath[['School Name', 'Total Count', 'Tested Grade/Subject']].drop_duplicates()
+
+    pivoted=allsMathCounts.pivot(index='School Name', columns='Tested Grade/Subject', values='Total Count')
+    totalCounts=pivoted[keepClasses]
+    totalCounts.columns=[i+"_total_count" for i in totalCounts.columns]
+    
+    allsMathCountsProf=allsMath[['School Name', 'Count', 'Tested Grade/Subject']].drop_duplicates()
+    pivotedCount=allsMathCountsProf.pivot(index='School Name', columns='Tested Grade/Subject', values='Count')
+    counts=pivotedCount[keepClasses]
+    counts.columns=[i+"_count" for i in counts.columns]
+    alls=pd.concat([totalCounts, counts], axis=1).fillna(0)
+    return(alls)
+
+keepClasses=['Grade 8', 'Algebra I', 'Geometry']
+alls= genPassRates(allsMath, keepClasses)
+
+alls['Sum']=alls.sum(axis=1)
+notSolved=[alls.index[i] for i in range(len(alls)) if type(alls.iloc[i]['Sum'])!=int ]
+
+nonmissings=alls.loc[~alls.index.isin(notSolved)].drop(columns=['Sum'])
+
+for item in keepClasses:
+    nonmissings[item]=nonmissings[item+"_count"].astype(str)+"/"+ nonmissings[item+ "_total_count"].astype(str)
+
+
+allPossible.iloc[0]

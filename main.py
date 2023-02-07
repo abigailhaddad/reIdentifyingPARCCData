@@ -1,5 +1,5 @@
-#%pip install sympy=='1.10.1'
-#%pip install openpyxl=='3.0.10'
+#%pip install sympy==1.10.1'
+#%pip install openpyxl=='3.0.10
 #pip install pandas=='1.4.4'
 
 
@@ -71,9 +71,16 @@ def genMissingValues():
     missingValues = ["n<10", "<=10%", "DS"]
     return(missingValues)
 
-def genCleanSchool(schoolFile, tab):
-    """
-    This reads in a school data file, subsets it to just the rows we want based on the dictionary in filterInitialData, and returns that subset
+def genFilterSchool(schoolFile, tab):
+    """This reads in an Excel tab and filters the data to return a subset of it
+
+    Args:
+      schoolFile: string indicating the name of an xlsx file
+      tab: string indicating the tab name in that file
+
+    Returns:
+      subset: a pandas df that has been filtered via a dictionary with field names and values
+
     """
     schoolData=pd.read_excel(schoolFile, tab)
     filterDict=filterInitialData()
@@ -82,33 +89,48 @@ def genCleanSchool(schoolFile, tab):
         subset=subset.loc[subset[item]==filterDict[item]]
     return(subset)
 
-def cleanSchoolProficient(schoolFile, schoolProficientTab):
-    """
-    This cleans the 'proficiency numbers by school file'
-    """
-    schoolProficientData=genCleanSchool(schoolFile, schoolProficientTab)
-    schoolProficientData['file']="Proficiency"
-    colsToKeep=['School Name', 'Subject', 'Tested Grade/Subject', 'Count', 'Total Count', 'file', 'Percent']
-    return(schoolProficientData[colsToKeep])
-    
-def cleanSchoolLevels(schoolFile, schoolLevelTab):
-    """
-    This cleans the 'level numbers by school file'
-    """
-    schoolLevelData=genCleanSchool(schoolFile, schoolLevelTab)
-    schoolLevelData['file']="All"
-    colsToKeep=['School Name', 'Subject', 'Tested Grade/Subject', 'Metric Value', 'Count', 'Total Count', 'file', 'Percent']
-    return(schoolLevelData[colsToKeep])
-    
-def fillDf(df, subject):
+def filterDropCols(schoolFile, schoolTab, columnValue):
+    """This filters the school data, adds a column indicating whether it's levels or proficiency data, and drops unneeded columns
+
+    Args:
+      schoolFile: string indicating the name of an xlsx file
+      schoolTab: string indicating a tab name in that file 
+      columnValue: string indicating whether this is proficiency or levels data
+
+    Returns:
+      subsetCols: a pandas df that has been filtered via a dictionary with field names and values, and with only selected columns
 
     """
+    schoolData=genFilterSchool(schoolFile, schoolTab)
+    schoolData['file']=columnValue
+    colsToKeep=['Subject',
+     'Count',
+     'Percent',
+     'Metric Value',
+     'Total Count',
+     'Tested Grade/Subject',
+     'file',
+     'School Name']
+    subsetCols=schoolData[[i for i in colsToKeep if i in schoolData.columns]]
+    return(subsetCols)
+    
+def fillDf(df, subject):
+    
+    """This filters the school data, adds a column indicating whether it's levels or proficiency data, and drops unneeded columns
     1) Takes a df with missing data for Count and Total Count (where missing can be DS, n<10, or <10%, as seen in genMissingValues)
     2) forward/backward fills when we have the missing numbers when we have them
     3) replaces fields that are still missing with -1s
     4) makes the count and total count fields into numbers
     5) if there are missing values in total count, ???
-    
+        
+    Args:
+      df: data frame
+      schoolTab: string indicating a tab name in that file 
+      columnValue: string indicating whether this is proficiency or levels data
+
+    Returns:
+      subsetCols: a pandas df that has been filtered via a dictionary with field names and values, and with only selected columns
+
     """
     df=df.loc[df['Subject']==subject]
     missingValues=genMissingValues()
@@ -120,7 +142,7 @@ def fillDf(df, subject):
         schoolData=df.loc[df['School Name']==schoolName]
         for j in schoolData['Metric Value'].unique():
             try:
-                # this fill in some of the missing total count info
+                # this fills in some of the missing total count info
                 metricData=schoolData.loc[(schoolData['Metric Value']==j)]
                 nonAllMetricData=int(metricData[metricData['Tested Grade/Subject']!="All"]['Total Count'].values)
                 if len([str(i) for i in  metricData if str(i)=="nan"])==1:
@@ -171,7 +193,7 @@ def substituteSymbol(value, valueWithinSchool, mySymbols):
         return(value) 
 
 def equationsByMetricFile(df, equationDict, number):
-    # for each metric file (proficiency and All?) this sets up that the values where 'Tested Grade/Subject' is All is the sum of the non-All values
+    # for each metric file (proficiency and All) this sets up that the values where 'Tested Grade/Subject' is All is the sum of the non-All values
     # this adds each of those equations to the equationDict and returns it, along with the number for what number of equation we're on so that next equations don't write over any in the dictionary
     for i in list(df['Metric File'].unique()):
         number=number+1
@@ -181,26 +203,25 @@ def equationsByMetricFile(df, equationDict, number):
     return(equationDict, number)
 
 def equationsByTotalCountbyGrade(df, equationDict, number):
+    # here we're saying, the total count in the levels (non-proficiency file) is the sum of the individual counts
     nonProficientGrades= [i for i in list(df['Grade file'].unique()) if  "Proficiency" not in i]
     for i in nonProficientGrades:
         number=number+1
-        # here we're saying, the total count in the levels (non-proficiency file) is the sum of the individual counts
         totalMetric=df.loc[df['Grade file']==i]['Total Count'].iloc[0]
         myEquation=df.loc[(df['Grade file']==i)]['Count'].values.sum()
         equationDict[number]= Eq((myEquation), totalMetric)
     return(equationDict, number)
 
 def equationsTotalCounts(df, equationDict, number):
+    # here we're saying: the total count in the proficiency file by school is the sum of the total counts in the proficiency file over all the grades
     number=number+1
     totalMetric=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']=="All")]['Total Count'].iloc[0]
     myEquation=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']!="All")]['Total Count'].values.sum()
     equationDict[number]= Eq((myEquation), totalMetric)
-    if equationDict[number]==False:
-        print([df['School Name'].iloc[0]])
-
     return(equationDict, number)
 
 def equationsTotalCountSubject(df, equationDict, number):
+    # here we're saying: the total count coming from each non-all subject is the same for each metric value
     nonAlls=[i for i in df['Tested Grade/Subject'].unique() if i!='All']
     for subject in nonAlls:
         for level in list(df['Metric Value'].unique()):
@@ -211,8 +232,8 @@ def equationsTotalCountSubject(df, equationDict, number):
     return(equationDict, number)
 
 def equationsByProficientAndLevels(df, equationDict, number):
+    # here we say: overall proficiency number is the sum of level 4 and 5
     for i in list(df.loc[df['file']=="Proficiency"]['Tested Grade/Subject'].unique()):
-        # here we say: overall proficiency number is the sum of level 4 and 5
         number=number+1
         totalMetric=df.loc[(df['file']=="Proficiency") & (df['Tested Grade/Subject']==i)]['Count'].iloc[0]
         myEquation=df.loc[(df['file']!="Proficiency") & (df['Tested Grade/Subject']==i) & df['Metric Value'].isin(["Performance Level 4", "Performance Level 5"])]['Count'].values.sum()
@@ -247,6 +268,7 @@ def replaceWithSymbolsAndGenerateEquations(df, schoolNumber):
     return(mySymbols, number, equationDict)
 
 def symbolicSolveASchool(schoolData, schoolName, schoolNumber):
+    # this takes the df for a school, replaces missings with symbols, solves as best it can with SymPy, and replaces the missings with the solutions
     mySymbols, number, equationDict=replaceWithSymbolsAndGenerateEquations(schoolData, schoolNumber)
     valuesInSchoolData=list(schoolData['Count'].values)+list(schoolData['Total Count'].values)
     symbolsWeUse=[i for i in valuesInSchoolData if type(i)== sympy.core.symbol.Symbol]
@@ -270,31 +292,17 @@ def symbolicSolveASchool(schoolData, schoolName, schoolNumber):
     
 def figureOutSums(symbolSolvedSet):
     # how many people do we know the grade and level for?
-    byGrade=symbolSolvedSet.loc[(symbolSolvedSet['file']=="All") & (symbolSolvedSet['Tested Grade/Subject']!="All")]
+    byGrade=symbolSolvedSet.loc[(symbolSolvedSet['file']=="Levels") & (symbolSolvedSet['Tested Grade/Subject']!="All")]
     sumCountLevel=sum([i for i in list(byGrade['Count']) if type(i)==int])
     # how many people do we know the grade for?
-    byAll=symbolSolvedSet.loc[(symbolSolvedSet['file']=="All") & (symbolSolvedSet['Tested Grade/Subject']=="All")]
+    byAll=symbolSolvedSet.loc[(symbolSolvedSet['file']=="Levels") & (symbolSolvedSet['Tested Grade/Subject']=="All")]
     uniqueTotal=byAll.groupby(['Tested Grade/Subject', 'School Name']).first()['Total Count']
     sumCount=sum([i for i in uniqueTotal.values if type(i)==int])
     print([sumCountLevel, sumCount])
     
-def testInitialComplete(resultInitial):
-    byGrade=resultInitial.loc[(resultInitial['file']=="All") & (resultInitial['Tested Grade/Subject']!="All")]
-    sumCountLevel=sum([i for i in list(byGrade['Count']) if i!=-1])
-    byAll=resultInitial.loc[(resultInitial['file']=="All") & (resultInitial['Tested Grade/Subject']=="All")]
-    uniqueTotal=byAll.groupby(['Tested Grade/Subject', 'School Name']).first()['Total Count']
-    sumCount=sum([i for i in uniqueTotal.values if i!=-1])
-    print([sumCountLevel, sumCount])
-    # sumCOuntLevel is working, sumCount is not  -ot's overreporting
-  
-
-def getSymbols(otherValuesLine):
-    args=[ i.args for i in otherValuesLine['Count'] if type(i)!=int]
-    symbols=[i for i in list(sum(args, ())) if  type(i)==sympy.core.symbol.Symbol]            
-    symbols=symbols+([i*-1 for i in list(sum(args, ())) if  type(i)==sympy.core.mul.Mul])
-    return(symbols)
 
 def concatDatasets(subsetProf, subsetAll, subject):
+    # this is generating the full initial data set with the proficiency and all data and the subject
     resultInitial=fillDf(pd.concat([subsetProf, subsetAll]), subject)
     resultInitial['countWithinSchool']=resultInitial.groupby(['School Name']).cumcount()+1
     maxCount=resultInitial['countWithinSchool'].max()
@@ -304,19 +312,17 @@ def concatDatasets(subsetProf, subsetAll, subject):
     return(resultInitial)
 
 def genData(subject):
+    # this is generating the full initial data set based on the subject
     schoolFile='[5] 2021-22 School Level PARCC and MSAA Data.xlsx'
     schoolProficientTab="Proficiency"
     schoolLevelTab="Performance Level"
-    subsetAll=cleanSchoolLevels(schoolFile, schoolLevelTab)
-    subsetProf=cleanSchoolProficient(schoolFile, schoolProficientTab)
+    subsetAll=filterDropCols(schoolFile, schoolLevelTab, "Levels")
+    subsetProf=filterDropCols(schoolFile, schoolProficientTab, "Proficient")
     subsetProf['Metric Value']="4 and 5"
     resultInitial=concatDatasets(subsetProf, subsetAll, subject)
-    resultInitial.to_pickle("resultInitial.pkl")  
-
-def getOrGenData(subject):
-    genData(subject)
-    resultInitial = pd.read_pickle("resultInitial.pkl") 
+    resultInitial.to_pickle(f'{subject}_initial.pkl') # this does some initial data cleaning -- just filling in some total counts and replacing unknows with 1
     return(resultInitial)
+
 
 def iterateThroughSchoolsSymbolsSolve(resultInitial):
     brokenSchools=[]
@@ -425,23 +431,6 @@ def applydict(value, dictOfReplacements):
             return(value)
     else:
         return(value)
-    
-def genOneSubject(subject, maxSymbolsForIteration=3):
-    # generates (or loads) data
-    initialDataSet=getOrGenData(subject)
-    # solves what we can solve via using the percentages to find numerators
-    initialDataSet['Count']=initialDataSet.apply(lambda x: solveFractionWithDenominatorGetVar(x['Count'], x['Percent'], x['Total Count']), axis=1)
-    # generates symbols via sympy and solves what can be solved symbolically
-    symbolSolvedSet, brokenSchools=iterateThroughSchoolsSymbolsSolve(initialDataSet)
-    # determines how symbols are still missing per school
-    dfmissing=determineNumberMissingSymbols(symbolSolvedSet)
-    # iterates through to find solutions for the schools with less than maxSymbolsForIteration still missing
-    dictOfReplacements=getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration)
-    # applies the solutions for the variables which got solves
-    symbolSolvedSet['Count']=symbolSolvedSet.apply(lambda x: applydict(x['Count'], dictOfReplacements), axis=1)     
-    symbolSolvedSet['Total Count']=symbolSolvedSet.apply(lambda x: applydict(x['Total Count'], dictOfReplacements), axis=1)  
-    symbolSolvedSet['OverallSubject']=subject
-    return(symbolSolvedSet)
 
 def getMetricsFromSubset(df):
     populated=[i for i in df['Count'] if i!=-1 and type(i)==int]
@@ -474,15 +463,40 @@ def aggregateCounts(initialDataSet, symbolSolvedSet):
     totalResult.columns=["Population", "Metric", "Count", "Type"]
     return(totalResult)
 
-def generateData():
+
+def genOneSubject(subject, maxSymbolsForIteration=3):
+    # generates data
+    initialDataSet=genData(subject)
+    # solves what we can solve via using the percentages to find numerators
+    initialDataSet['Count']=initialDataSet.apply(lambda x: solveFractionWithDenominatorGetVar(x['Count'], x['Percent'], x['Total Count']), axis=1)
+    # generates symbols via sympy and solves what can be solved symbolically
+    symbolSolvedSet, brokenSchools=iterateThroughSchoolsSymbolsSolve(initialDataSet)
+    # determines how symbols are still missing per school
+    dfmissing=determineNumberMissingSymbols(symbolSolvedSet)
+    # iterates through to find solutions for the schools with less than maxSymbolsForIteration still missing
+    dictOfReplacements=getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration)
+    # applies the solutions for the variables which got solves
+    symbolSolvedSet['Count']=symbolSolvedSet.apply(lambda x: applydict(x['Count'], dictOfReplacements), axis=1)     
+    symbolSolvedSet['Total Count']=symbolSolvedSet.apply(lambda x: applydict(x['Total Count'], dictOfReplacements), axis=1)  
+    symbolSolvedSet['OverallSubject']=subject
+    return(symbolSolvedSet)
+  
+
+def main():
     cleanedData=pd.concat([genOneSubject(subject="Math"), genOneSubject(subject="ELA")])
-    cleanedData.to_pickle("resultFinal.pkl") 
-    
-def getBothSubjects():
-    generateData()
-    cleanedData=pd.read_pickle("resultFinal.pkl")
-    return(cleanedData)
+    initialData=pd.concat([pd.read_pickle("ELA_initial.pkl"), pd.read_pickle("Math_initial.pkl")])
+    return(initialData, cleanedData)
 
 
 os.chdir(r"C:\Users\abiga\OneDrive\Documents\Python Scripts\parcc\data")
-cleanedData=getBothSubjects()
+initialData, cleanedData=main()
+
+
+def evaluateResults():
+    byGrade=resultInitial.loc[(resultInitial['file']=="All") & (resultInitial['Tested Grade/Subject']!="All")]
+    sumCountLevel=sum([i for i in list(byGrade['Count']) if i!=-1])
+    byAll=resultInitial.loc[(resultInitial['file']=="All") & (resultInitial['Tested Grade/Subject']=="All")]
+    uniqueTotal=byAll.groupby(['Tested Grade/Subject', 'School Name']).first()['Total Count']
+    sumCount=sum([i for i in uniqueTotal.values if i!=-1])
+    print([sumCountLevel, sumCount])
+    # sumCountLevel is working, sumCount is not  -ot's overreporting

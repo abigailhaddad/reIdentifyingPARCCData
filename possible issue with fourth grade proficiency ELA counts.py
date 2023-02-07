@@ -3,6 +3,13 @@ import os
 from fractions import Fraction
 import math
 
+"""
+I was misunderstanding the relationship between the sum of the schools data and the state data--
+because of the addition of some homeschool/non-public school students, the schools do not necessarily sum up to the state data
+
+
+"""
+
 def solveFractionWithDenominatorGetVar(count, percent, total_count):
     # if we have a correct denominator (total_count), and we have a percent, and we have a missing count, this will return the correct numerator
     # if the percent and denominator are not consistent, this will return "Unexpected fraction result", which may break the rest of the code

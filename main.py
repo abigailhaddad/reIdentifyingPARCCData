@@ -1,7 +1,7 @@
-#%pip install sympy
-#%pip install openpxyl
-#%pip install plotly
-#%pip install plotnine
+#%pip install sympy=='1.10.1'
+#%pip install openpyxl=='3.0.10'
+#pip install pandas=='1.4.4'
+
 
 from sympy import symbols, Eq, solve
 import pandas as pd
@@ -313,13 +313,8 @@ def genData(subject):
     resultInitial=concatDatasets(subsetProf, subsetAll, subject)
     resultInitial.to_pickle("resultInitial.pkl")  
 
-def getOrGenData(generate=False, subject="ELA"):
-    if generate==True:
-        genData(subject)
-    try:
-        resultInitial = pd.read_pickle("resultInitial.pkl") 
-    except:
-        genData(subject)
+def getOrGenData(subject):
+    genData(subject)
     resultInitial = pd.read_pickle("resultInitial.pkl") 
     return(resultInitial)
 
@@ -418,7 +413,7 @@ def getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration):
     for col in dfValues.columns:
         value=[i for i in dfValues[col].values if str(i)!="nan"][0]
         dictOfReplacements[col]=value
-    return(dictOfReplacements, allPossible)
+    return(dictOfReplacements)
 
 def applydict(value, dictOfReplacements):
     # this takes a value and if it's not an integer, tries to substitute a dictionary of symbol/value pairs into it
@@ -431,9 +426,9 @@ def applydict(value, dictOfReplacements):
     else:
         return(value)
     
-def main(subject, generate=False, maxSymbolsForIteration=3):
+def genOneSubject(subject, maxSymbolsForIteration=3):
     # generates (or loads) data
-    initialDataSet=getOrGenData(generate, subject)
+    initialDataSet=getOrGenData(subject)
     # solves what we can solve via using the percentages to find numerators
     initialDataSet['Count']=initialDataSet.apply(lambda x: solveFractionWithDenominatorGetVar(x['Count'], x['Percent'], x['Total Count']), axis=1)
     # generates symbols via sympy and solves what can be solved symbolically
@@ -441,29 +436,18 @@ def main(subject, generate=False, maxSymbolsForIteration=3):
     # determines how symbols are still missing per school
     dfmissing=determineNumberMissingSymbols(symbolSolvedSet)
     # iterates through to find solutions for the schools with less than maxSymbolsForIteration still missing
-    dictOfReplacements, allPossible=getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration)
+    dictOfReplacements=getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration)
     # applies the solutions for the variables which got solves
     symbolSolvedSet['Count']=symbolSolvedSet.apply(lambda x: applydict(x['Count'], dictOfReplacements), axis=1)     
     symbolSolvedSet['Total Count']=symbolSolvedSet.apply(lambda x: applydict(x['Total Count'], dictOfReplacements), axis=1)  
-    return(symbolSolvedSet, allPossible)
-
-
-"""
-number of people who we know their subject, level, and school
-number of people who we know their subject, proficiency, and school
-number of people who we know their level and school
-number of people who we know their proficiency and school
-
-same, but with symbols
-
-"""
+    symbolSolvedSet['OverallSubject']=subject
+    return(symbolSolvedSet)
 
 def getMetricsFromSubset(df):
     populated=[i for i in df['Count'] if i!=-1 and type(i)==int]
     populatedCount=len(populated)/len(df)
     populatedSum=sum(populated)
     return(populatedCount, populatedSum)
-    
     
 def getCounts(df):
     subjectAndLevel=df.loc[(df["file"]=="All") & (df["Tested Grade/Subject"]!="All")]
@@ -491,25 +475,14 @@ def aggregateCounts(initialDataSet, symbolSolvedSet):
     return(totalResult)
 
 def generateData():
-    Math, allPossibleMath=main(subject="Math", generate=True)
-    Math['OverallSubject']="Math"
-    ELA, allPossibleELA=main(subject="ELA", generate=True)
-    ELA['OverallSubject']="ELA"
-    allPossible=pd.concat([allPossibleMath,allPossibleELA])
-    cleanedData=pd.concat([ELA, Math])
+    cleanedData=pd.concat([genOneSubject(subject="Math"), genOneSubject(subject="ELA")])
     cleanedData.to_pickle("resultFinal.pkl") 
-    allPossible.to_pickle("allOptions.pkl")
     
-    
-def getBothSubjects(generate=True):
-    if generate==True:
-        generateData()
-    else:
-        pass
+def getBothSubjects():
+    generateData()
     cleanedData=pd.read_pickle("resultFinal.pkl")
-    allPossible=pd.read_pickle("allOptions.pkl")
-    return(cleanedData, allPossible)
-    
+    return(cleanedData)
+
 
 os.chdir(r"C:\Users\abiga\OneDrive\Documents\Python Scripts\parcc\data")
-bothSubjects, allPossible=getBothSubjects()
+cleanedData=getBothSubjects()

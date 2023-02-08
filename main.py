@@ -397,7 +397,6 @@ def symbolicSolveASchool(schoolData, schoolName, schoolNumber):
     valuesInSchoolData=list(schoolData['Count'].values)+list(schoolData['Total Count'].values)
     symbolsWeUse=[i for i in valuesInSchoolData if type(i)== sympy.core.symbol.Symbol]
     mySymbols=tuple([i for i in mySymbols if i in symbolsWeUse])
-    # the length of this is the length of initially missing things
     numberOfRealEquations=len([i for i in list(equationDict.values()) if i!=True])
     if numberOfRealEquations>0:
         allequations=tuple(equationDict.values())
@@ -485,19 +484,43 @@ def iterateThroughSchoolsSymbolsSolve(resultInitial):
     return(symbolSolvedSet, brokenSchools)
 
 def determineNumberMissingSymbols(symbolSolvedSet):
+    """the concept here is that getting the count of symbols (that is, still missing variables) for each school
+    this does not count unique symbols - that is, if a22 is the answer to multiple of your counts, it will count multiple times
+    the thinking here is that we're using this to determine what schools to try to brute force solutions to, and each additional unsolved value
+    adds another equation we have to solve for each possible set of numbers we're trying
+    
+    Args:
+      symbolSolvedSet: pandas df with symbols in it after we've used sympy to solve what it can
+      
+    Returns:
+      dfmissing: pandas df with School Name and Count of Missing Symbols columns
+      
+      """
     missingCounts=[]
     for schoolName in symbolSolvedSet['School Name'].unique():
-    # this does not work FYI but also we don't really need it
         schoolData=symbolSolvedSet.loc[symbolSolvedSet['School Name']==schoolName]
-        possibleValues=set([i for i in schoolData['Count'].values if type(i)!=int] + [i for i in schoolData['Total Count'].values if type(i)!=int])
-        symbols=takeSymbolFromList(possibleValues)
-        # this is not working becaus it's actually not the case the symbol is always there on its own
-        missingCounts.append([schoolName, len(symbols)])
+        possibleValues=[i for i in schoolData['Count'].values if type(i)!=int] + [i for i in schoolData['Total Count'].values if type(i)!=int]
+        missingCounts.append([schoolName, len(possibleValues)])
     dfmissing=pd.DataFrame(missingCounts)
     dfmissing.columns=['School Name', 'Count of Missing Symbols']
     return(dfmissing)
 
 def testCombos(possibleValues, allCombos, unsolvedValues, myVars):
+    """here we're taking a list of lists of all possible combos 
+    (that is, groups of values representing the values we're trying to solve)
+     and we're iterating through each set and if it 'works' (all values are >=0),
+     we append and return it
+    
+    Args:
+      possibleValues: list of list of values that work
+      allCombos: list of list of constants we're testing
+      unsolvedValues: unsolvedValues: these are symbols or equations that need to be >=0
+      myVars: myVars: the symbols we're solving for??
+      
+    Returns:
+      possibleValues: updated list of list of values that work
+      
+      """
     for aSet in allCombos:
         values=[]
         dictionaryOfValues={}
@@ -511,12 +534,24 @@ def testCombos(possibleValues, allCombos, unsolvedValues, myVars):
     return(myVars, possibleValues) 
     
 def takeSymbolFromList(unsolvedValues):
+    """I think we're extracting all the symbols from a list of values
+   
+    Args:
+      unsolvedValues: list of values including symbols, equations, constants
+      
+    Returns:
+      justPositives: just the symbols?
+      
+      """
+    print(unsolvedValues)
     firstPass=[i for i in unsolvedValues if type(i)==sympy.core.symbol.Symbol]
     unflatlist=[list(i._args) for i in unsolvedValues]
     secondPass=list(set([item for sublist in unflatlist for item in sublist if type(item)==sympy.core.mul.Mul or type(item)==sympy.core.symbol.Symbol]))
     firstAndSecond=firstPass+secondPass
     plusNegatives=firstAndSecond + [i * -1 for i in firstAndSecond]
     justPositives=list(set([i for i in plusNegatives if str(i)[0]!="-"]))
+    print(justPositives)
+    print()
     return(justPositives)
 
 def solveIfNMissing(symbolSolvedSet, schoolName):
@@ -598,7 +633,7 @@ def aggregateCounts(initialDataSet, symbolSolvedSet):
     return(totalResult)
 
 
-def genOneSubject(subject, maxSymbolsForIteration=4):
+def genOneSubject(subject, maxSymbolsForIteration=10):
     # generates data
     initialDataSet=genData(subject)
     # solves what we can solve via using the percentages to find numerators

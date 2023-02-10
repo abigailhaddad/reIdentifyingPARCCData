@@ -12,53 +12,7 @@ from itertools import product
 from string import ascii_lowercase
 from fractions import Fraction
 pd.options.mode.chained_assignment = None
-"""
-INPUT: 
-    
-folder with the following file in it:
-    
- '[5] 2021-22 School Level PARCC and MSAA Data.xlsx'
- with tabs: 
- "Proficiency"
-Performance Level"
 
-
-OUTPUTS:
-    "resultInitial.pkl" file with raw data in it
-    
-    "solvedData.csv" file with final results in it
-    
-    
-Technical Notes/Things That Came Up:
-    
-the solving here takes four parts:
-    -'solving' total counts: this is the most basic part of the code -- we're basically just forward and backward filling missing Total Count data if there is a Total Count given for that school/level somewhere else in the data, or doing some addition'. 
-    this is done in fillDf
-    
-    -taking advantage of the percent data given when count is missing to use fractions to solve for count: this is in 
-    this is done via solveFractionWithDenominatorGetVar
-    
-    -using SymPy to substite missing values for equations, and using the various data relationships having to do with data aggregation to 'solve' the equations when possible
-    this is in iterateThroughSchoolsSymbolsSolve
-    
-    -generating all of the possible remaining options and determining if for any of them, there's only one choice that works. some missing data can still get solved this way because SymPy doesn't really know how to use the fact that none of the values can be <0, so manually adding this constraint and
-    iterating through all possible options can solve some of the remaining data
-    this is in getSolvesOnes
-
-the remaining code here evaluates the degree to which we were able to fill in missing values and tests code
-    
--The two things that take up a lot of time for running this are:
-    -making a lot of sympy symbols (even if you don't do anything with them but generate them)
-    -generating and testing all the possible options to try to solve equations/variables we're not able to solve via Sympy (basically, iterating through all possible choices)
-    
-    the first issue, we control in the function replaceWithSymbolsAndGenerateEquations
-    the line that controls the number of variables creates is AthroughD=[i for i in keywords if i[0]=="a" or i[0]=="b" or i[0]=="c" or i[0]=="d"]
-    if you needed more variables, you'd go later in the alphabet. (for instance, if we wanted to add in functionality for looking at all the subgroup missing data, which this code currently drops)
-    
-    the second issue, we control via the maxSymbolsForIteration parameter. if you set that higher, it will attempt to solve (and in some cases, solve) unsolved count variables for schools with more data that's still unsolved after trying to solve it mathematically via
-    sympy -- but because it's iterating through every possible option, if you set this higher, it will take a really long time to run -- much longer than everything ele combined'
-    
-"""
 def filterInitialData():
     """This produces a dictionary of the column - value pairs we want to keep
 
@@ -515,7 +469,7 @@ def testCombos(possibleValues, allCombos, unsolvedValues, myVars):
       possibleValues: list of list of values that work
       allCombos: list of list of constants we're testing
       unsolvedValues: unsolvedValues: these are symbols or equations that need to be >=0
-      myVars: myVars: the symbols we're solving for??
+      myVars: the symbols we're solving for
       
     Returns:
       possibleValues: updated list of list of values that work
@@ -534,27 +488,35 @@ def testCombos(possibleValues, allCombos, unsolvedValues, myVars):
     return(myVars, possibleValues) 
     
 def takeSymbolFromList(unsolvedValues):
-    """I think we're extracting all the symbols from a list of values
+    """this takes a list of values and extracts all of the unique symbols from it
    
     Args:
       unsolvedValues: list of values including symbols, equations, constants
       
     Returns:
-      justPositives: just the symbols?
+      justPositives: unique unsolved symbols
       
       """
-    print(unsolvedValues)
     firstPass=[i for i in unsolvedValues if type(i)==sympy.core.symbol.Symbol]
     unflatlist=[list(i._args) for i in unsolvedValues]
     secondPass=list(set([item for sublist in unflatlist for item in sublist if type(item)==sympy.core.mul.Mul or type(item)==sympy.core.symbol.Symbol]))
     firstAndSecond=firstPass+secondPass
     plusNegatives=firstAndSecond + [i * -1 for i in firstAndSecond]
     justPositives=list(set([i for i in plusNegatives if str(i)[0]!="-"]))
-    print(justPositives)
-    print()
     return(justPositives)
 
 def solveIfNMissing(symbolSolvedSet, schoolName):
+    """this takes a df that's been solved by SymPy and tries to brute force remaining solutions
+   
+    Args:
+      symbolSolvedSet: pandas df
+      schoolName: school name
+      
+    Returns:
+      myVars: list of unsolved SymPy symbols
+      possibleValues:  this us a list of tuples showing values that meet our constraints - that is, they could be the solutions to the symbols
+      
+      """
     possibleValues=[]
     schoolData=symbolSolvedSet.loc[symbolSolvedSet['School Name']==schoolName]
     unsolvedValues=list(set([i for i in schoolData['Count'].values if type(i)!=int] + [i for i in schoolData['Total Count'].values if type(i)!=int] ))
@@ -567,13 +529,23 @@ def solveIfNMissing(symbolSolvedSet, schoolName):
             if len([i for i in possibleValues if number in i])<1 and len(possibleValues)>0:
                 keepGoing=0
     if len(possibleValues)<1:
-        print(f"hmm {schoolName}")
+        print(f"possible issue {schoolName}")
     return(myVars, possibleValues) 
 
 def getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration):
-    #this takes schools where there are still missing variables and iterates through their data and tries to solve the remaining symbols
-    # the mechanism is that we know every value needs to be >=0; so this sometimes solves the equation
-    # sympy is not good at using that inforamtion
+    """this takes schools where there are still missing variables and iterates through their data and tries to solve the remaining symbols
+    the mechanism is that we know every value needs to be >=0; so this sometimes solves the equation
+    sympy is not good at using that inforamtion
+    Args:
+      symbolSolvedSet: pandas df
+      dfmissing: pandas df with School Name and Count of Missing Symbols columns
+      maxSymbolsForIteration: this is the maximum amount of missingness (# of missing values) that we want to try to solve; 
+      the bigger this is, the longer it will take to run but we might solve more
+      
+    Returns:
+      dictOfReplacements: dictionary where the keys are SymPy symbols and the solutions are the value - for symbols where we found just one solution
+      
+      """
     selectedSchools=dfmissing.loc[(dfmissing['Count of Missing Symbols']< maxSymbolsForIteration) & (dfmissing['Count of Missing Symbols']>0)]['School Name']
     dictOfReplacements={}
     listOfPossible=[]
@@ -591,7 +563,15 @@ def getSolvesOnes(symbolSolvedSet, dfmissing,  maxSymbolsForIteration):
     return(dictOfReplacements)
 
 def applydict(value, dictOfReplacements):
-    # this takes a value and if it's not an integer, tries to substitute a dictionary of symbol/value pairs into it
+    """this takes a value and if it's not an integer, tries to substitute a dictionary of symbol/value pairs into it
+    Args:
+      value: this could be an integer, SymPy symbol, SymPy equation
+      dictOfReplacements: dictionary where the keys are SymPy symbols and the solutions are the value - for symbols where we found just one solution
+      
+    Returns:
+      value: this is the initial value or the initial value, with a substition made for one or more symbols
+      
+      """
     if type(value)!=int:
         try:
             item=value.subs(dictOfReplacements)
@@ -601,39 +581,17 @@ def applydict(value, dictOfReplacements):
     else:
         return(value)
 
-def getMetricsFromSubset(df):
-    populated=[i for i in df['Count'] if i!=-1 and type(i)==int]
-    populatedCount=len(populated)/len(df)
-    populatedSum=sum(populated)
-    return(populatedCount, populatedSum)
-    
-def getCounts(df):
-    subjectAndLevel=df.loc[(df["file"]=="All") & (df["Tested Grade/Subject"]!="All")]
-    subjectAndProficiency=df.loc[(df["file"]=="Proficiency") & (df["Tested Grade/Subject"]!="All")]
-    level=df.loc[(df["file"]=="All") & (df["Tested Grade/Subject"]=="All")]
-    proficiency=df.loc[(df["file"]=="Proficiency") & (df["Tested Grade/Subject"]=="All")]
-    resultDict={"Subject and Level": getMetricsFromSubset(subjectAndLevel),
-                "Subject and Proficient": getMetricsFromSubset(subjectAndProficiency),
-                "Level":getMetricsFromSubset(level),
-               "Proficient": getMetricsFromSubset(proficiency) }
-    return(resultDict)
-
-def aggregateCounts(initialDataSet, symbolSolvedSet):
-    # this kind of is a thing
-    resultInitial=pd.DataFrame(getCounts(initialDataSet))
-    resultInitial.index=["Populated Count", "Populated Sum"]
-    resultFinal=pd.DataFrame(getCounts(symbolSolvedSet))
-    resultFinal.index=["Populated Count", "Populated Sum"]
-    initial=resultInitial.unstack().reset_index()
-    initial['type']="Initial"
-    final=resultFinal.unstack().reset_index()
-    final['type']="Final"
-    totalResult=pd.concat([initial, final])
-    totalResult.columns=["Population", "Metric", "Count", "Type"]
-    return(totalResult)
-
 
 def genOneSubject(subject, maxSymbolsForIteration=10):
+    """this runs all the data loading cleaning functions for ELA or math
+    
+    Args:
+      subject: string for ELA or Math
+      maxSymbolsForIteration: this is the maximum number of missing values a school can have where we'll try to solve for it our brute force attempts
+    
+    Returns:
+      symbolSolvedSet: pandas df after solving, still has SymPy symbols for missing values
+      """
     # generates data
     initialDataSet=genData(subject)
     # solves what we can solve via using the percentages to find numerators
@@ -651,14 +609,21 @@ def genOneSubject(subject, maxSymbolsForIteration=10):
     return(symbolSolvedSet)
   
 
-def main():
+def runSaveBothSubjects():
+    """this runs all the data loading cleaning functions for both subjects
+    
+    Returns:
+      initialData: initial data set (with -1s for missings)
+      cleanData: final data set after all the solving
+          
+      """
     cleanedData=pd.concat([genOneSubject(subject="Math"), genOneSubject(subject="ELA")])
     initialData=pd.concat([pd.read_pickle("ELA_initial.pkl"), pd.read_pickle("Math_initial.pkl")])
     return(initialData, cleanedData)
 
 
 os.chdir(r"C:\Users\abiga\OneDrive\Documents\Python Scripts\parcc\data")
-initialData, cleanedData=main()
+initialData, cleanedData=runSaveBothSubjects()
 
 
 def genMetricsBySchool(resultInitial):

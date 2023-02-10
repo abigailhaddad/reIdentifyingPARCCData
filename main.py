@@ -1,17 +1,13 @@
-#%pip install sympy==1.10.1'
-#%pip install openpyxl=='3.0.10
-#pip install pandas=='1.4.4'
-
-
 from sympy import symbols, Eq, solve
 import pandas as pd
-import numpy as np
 import os
 import sympy
 from itertools import product
 from string import ascii_lowercase
 from fractions import Fraction
 pd.options.mode.chained_assignment = None
+import numpy as np
+import numbers
 
 def filterInitialData():
     """This produces a dictionary of the column - value pairs we want to keep
@@ -20,7 +16,6 @@ def filterInitialData():
       filterDict: a dictionary of the column - value pairs we want to keep
 
     """
-    # we're only looking at rows in the data which meet these conditions -- we're looking at school- and grade-level data
     filterDict={"Assessment Name": "PARCC",
                "Grade of Enrollment": "All",
                "Student group": "All"}
@@ -614,24 +609,60 @@ def runSaveBothSubjects():
     
     Returns:
       initialData: initial data set (with -1s for missings)
-      cleanData: final data set after all the solving
+      cleanedData: final data set after all the solving
           
       """
     cleanedData=pd.concat([genOneSubject(subject="Math"), genOneSubject(subject="ELA")])
     initialData=pd.concat([pd.read_pickle("ELA_initial.pkl"), pd.read_pickle("Math_initial.pkl")])
     return(initialData, cleanedData)
 
-
-os.chdir(r"C:\Users\abiga\OneDrive\Documents\Python Scripts\parcc\data")
-initialData, cleanedData=runSaveBothSubjects()
-
-
-def genMetricsBySchool(resultInitial):
+   
+def genMetricsBySchool(df):
+    """this generates a count of total rows and count of missing values for the Count variable
+    
+    Args:
+        df: pandas df with either -1s or non-integer values representing missing data
+        
+    Returns:
+        metricDF: pandas df with School Name, count of total values, and count of missing values
+          
+      """
     metricsBySchool=[]
-    for schoolName in resultInitial['School Name'].unique():
-        schoolData=resultInitial.loc[resultInitial['School Name']==schoolName]
+    for schoolName in df['School Name'].unique():
+        schoolData=df.loc[df['School Name']==schoolName]
         count=len(schoolData)
-        missingCount=count-len([i for i in schoolData['Count'].values if type(i)==int or i==-1])
+        missingCount=count-len([i for i in schoolData['Count'].values if isinstance(i, numbers.Number) and i!=-1])
         metricsBySchool.append([schoolName, count, missingCount])
-    metricDF=pd.DataFrame(metricsBySchool, columns=['School', 'Line Count', 'Missing Count'])
+    metricDF=pd.DataFrame(metricsBySchool, columns=['School Name', 'Line Count', 'Missing Count'])
     return(metricDF)
+
+def genBeforeAfterMetrics(initialData, cleanedData):
+    """this generates and writes out a count of before- and after- missingness for the Count variable for 
+    the levels and proficiency data (just the rows selected in filterDict() function)
+    
+    Args:
+        initialData: initial data set (with -1s for missings)
+        cleanedData: final data set after all the solving
+        
+    Returns:
+        allMetrics: pandas df with School Name, count of total values,
+        and count of missing values before and after
+          
+      """
+    initialMissingness=genMetricsBySchool(initialData).rename(columns={"Missing Count": "Missing Count Initial"})
+    finalMissingness=genMetricsBySchool(cleanedData).rename(columns={"Missing Count": "Missing Count Final"})
+    beforeAndAfter=initialMissingness.merge(finalMissingness, left_on=['School Name', 'Line Count'], right_on=['School Name','Line Count'], how='outer')
+    return(beforeAndAfter)
+    
+
+def main():    
+    #this runs all the code -- reads the data, cleans it, outputs a csv file summarizing how many Count values were solve
+    os.chdir(os.getcwd().replace("reIdentifyingPARCCData", "data"))
+    initialData, cleanedData=runSaveBothSubjects()
+    os.chdir(os.getcwd().replace("data", "reIdentifyingPARCCData"))
+    summaryResults=genBeforeAfterMetrics(initialData, cleanedData)
+    summaryResults.to_csv("Missing Count by School, Before and After.csv")
+
+
+main()
+

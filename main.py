@@ -633,7 +633,7 @@ def genMetricsBySchool(df):
         count=len(schoolData)
         missingCount=count-len([i for i in schoolData['Count'].values if isinstance(i, numbers.Number) and i!=-1])
         metricsBySchool.append([schoolName, count, missingCount])
-    metricDF=pd.DataFrame(metricsBySchool, columns=['School Name', 'Line Count', 'Missing Count'])
+    metricDF=pd.DataFrame(metricsBySchool, columns=['School Name', 'Total Count', 'Missing Count'])
     return(metricDF)
 
 def genBeforeAfterMetrics(initialData, cleanedData):
@@ -651,7 +651,7 @@ def genBeforeAfterMetrics(initialData, cleanedData):
       """
     initialMissingness=genMetricsBySchool(initialData).rename(columns={"Missing Count": "Missing Count Initial"})
     finalMissingness=genMetricsBySchool(cleanedData).rename(columns={"Missing Count": "Missing Count Final"})
-    beforeAndAfter=initialMissingness.merge(finalMissingness, left_on=['School Name', 'Line Count'], right_on=['School Name','Line Count'], how='outer')
+    beforeAndAfter=initialMissingness.merge(finalMissingness, left_on=['School Name', 'Total Count'], right_on=['School Name','Total Count'], how='outer')
     return(beforeAndAfter)
     
 
@@ -661,7 +661,7 @@ def main():
     initialData, cleanedData=runSaveBothSubjects()
     os.chdir(os.getcwd().replace("data", "reIdentifyingPARCCData"))
     summaryResults=genBeforeAfterMetrics(initialData, cleanedData)
-    summaryResults.to_csv("Missing Count by School, Before and After.csv")
+    summaryResults.to_csv("Missing Count by School, Before and After.csv", index=False)
 
 
 main()

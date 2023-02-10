@@ -1,221 +1,221 @@
-,School Name,Line Count,Missing Count Initial,Missing Count Final
-0,Bard High School Early College DC (Bard DC),36,11,6
-1,Ida B. Wells Middle School,60,14,6
-2,School-Within-School @ Goding,48,12,4
-3,Aiton Elementary School,48,21,4
-4,Amidon-Bowen Elementary School,48,12,0
-5,Bancroft Elementary School,48,4,0
-6,Barnard Elementary School,48,8,0
-7,Beers Elementary School,48,12,6
-8,Brent Elementary School,48,10,0
-9,Brightwood Elementary School,48,16,16
-10,Bunker Hill Elementary School,48,24,6
-11,Burroughs Elementary School,48,12,0
-12,Burrville Elementary School,48,18,8
-13,Cleveland Elementary School,48,14,4
-14,H.D. Cooke Elementary School,48,14,12
-15,Drew Elementary School,48,26,20
-16,Eaton Elementary School,48,8,4
-17,Garfield Elementary School,48,23,12
-18,Garrison Elementary School,48,4,0
-19,Hardy Middle School,60,9,0
-20,C.W. Harris Elementary School,48,21,12
-21,Hendley Elementary School,48,21,6
-22,Houston Elementary School,48,20,14
-23,Hyde-Addison Elementary School,48,8,0
-24,Janney Elementary School,48,20,16
-25,Ketcham Elementary School,48,19,8
-26,Hearst Elementary School,48,8,4
-27,Kimball Elementary School,48,18,14
-28,Lafayette Elementary School,48,0,0
-29,Langdon Elementary School,48,10,0
-30,LaSalle-Backus Elementary School,48,12,0
-31,Leckie Education Campus,84,34,28
-32,Ludlow-Taylor Elementary School,48,4,0
-33,Key Elementary School,48,10,8
-34,Mann Elementary School,48,8,4
-35,Maury Elementary School,48,2,0
-36,Miner Elementary School,48,19,12
-37,Marie Reed Elementary School,48,4,0
-38,Moten Elementary School,48,23,12
-39,Murch Elementary School,48,6,0
-40,Nalle Elementary School,48,21,14
-41,Noyes Elementary School,48,23,14
-42,Lawrence E. Boone Elementary School,48,24,20
-43,Oyster-Adams Bilingual School,90,21,8
-44,Patterson Elementary School,48,20,14
-45,Payne Elementary School,48,4,0
-46,Bruce-Monroe Elementary School @ Park View,48,6,0
-47,Plummer Elementary School,48,18,8
-48,Powell Elementary School,48,12,8
-49,Raymond Elementary School,48,12,6
-50,Ross Elementary School,48,15,8
-51,Savoy Elementary School,48,24,16
-52,Malcolm X Elementary School @ Green,48,24,20
-53,Seaton Elementary School,48,6,0
-54,Shepherd Elementary School,48,8,4
-55,Simon Elementary School,48,22,18
-56,Randle Highlands Elementary School,48,16,14
-57,Excel Academy,84,38,32
-58,Stanton Elementary School,48,21,14
-59,Stoddert Elementary School,48,10,8
-60,Smothers Elementary School,48,26,22
-61,Takoma Elementary School,48,8,0
-62,Thomas Elementary School,48,24,16
-63,Thomson Elementary School,48,6,0
-64,Truesdell Elementary School,48,10,10
-65,Tubman Elementary School,48,16,8
-66,Turner Elementary School,48,23,6
-67,Tyler Elementary School,48,6,0
-68,Van Ness Elementary School,48,10,4
-69,Walker-Jones Education Campus,84,36,26
-70,Watkins Elementary School (Capitol Hill Cluster),48,4,0
-71,Wheatley Education Campus,84,37,26
-72,John Lewis Elementary School,48,6,0
-73,Whittier Elementary School,48,16,0
-74,J.O. Wilson Elementary School,48,12,6
-75,King Elementary School,48,22,10
-76,Brookland Middle School,54,17,14
-77,Dorothy I. Height Elementary School,48,8,0
-78,Capitol Hill Montessori School @ Logan,84,21,0
-79,Langley Elementary School,48,21,12
-80,Benjamin Banneker High School,42,17,6
-81,Browne Education Campus,90,44,34
-82,Deal Middle School,60,5,0
-83,Eliot-Hine Middle School,54,15,10
-84,School Without Walls @ Francis-Stevens,90,14,4
-85,Hart Middle School,54,17,14
-86,Johnson Middle School,54,28,14
-87,Kramer Middle School,54,30,22
-88,MacFarland Middle School,54,16,10
-89,Kelly Miller Middle School,54,22,18
-90,Sousa Middle School,60,31,26
-91,Stuart-Hobson Middle School (Capitol Hill Cluster),60,6,0
-92,Jefferson Middle School Academy,54,7,0
-93,McKinley Middle School,54,18,18
-94,Ron Brown College Preparatory High School,36,17,10
-95,Columbia Heights Education Campus,72,12,10
-96,Anacostia High School,36,18,10
-97,Ballou High School,36,18,18
-98,Cardozo Education Campus,78,32,16
-99,Coolidge High School,36,10,6
-100,Roosevelt STAY High School,36,25,22
-101,Eastern High School,36,8,6
-102,McKinley Technology High School,42,14,4
-103,Roosevelt High School,42,13,6
-104,Ballou STAY High School,36,32,30
-105,Woodrow Wilson High School,42,9,4
-106,H.D. Woodson High School,36,15,10
-107,School Without Walls High School,42,18,8
-108,Dunbar High School,36,9,6
-109,Duke Ellington School of the Arts,42,13,8
-110,"Phelps Architecture, Construction and Engineering High School",42,15,8
-111,Luke C. Moore High School,36,34,34
-112,Bridges PCS,48,16,0
-113,Capital City PCS - High School,36,16,6
-114,Capital City PCS - Middle School,66,19,10
-115,Capital City PCS - Lower School,36,12,10
-116,Cesar Chavez Public Charter Schools for Public Policy,60,17,10
-117,DC Bilingual PCS,48,6,0
-118,DC Prep PCS - Benning Elementary School,24,8,8
-119,DC Prep PCS - Anacostia Middle School,36,14,12
-120,DC Prep PCS - Edgewood Elementary School,24,8,0
-121,DC Prep PCS - Edgewood Middle School,72,14,0
-122,DC Prep PCS - Benning Middle School,72,18,10
-123,DC Prep PCS - Anacostia Elementary School,24,8,8
-124,E.L. Haynes PCS - High School,36,8,6
-125,E.L. Haynes PCS - Elementary School,36,8,6
-126,E.L. Haynes PCS - Middle School,72,22,22
-127,Eagle Academy PCS - Capitol Riverfront,24,14,12
-128,Eagle Academy PCS - Congress Heights,24,12,12
-129,Early Childhood Academy PCS,24,8,8
-130,Friendship PCS - Southeast Middle,72,27,18
-131,Friendship PCS - Ideal Elementary,24,8,8
-132,Friendship PCS - Ideal Middle,72,27,20
-133,Friendship PCS - Southeast Elementary,24,8,4
-134,Friendship PCS - Armstrong Middle,72,29,20
-135,Friendship PCS - Technology Preparatory High School,36,13,10
-136,Friendship PCS - Collegiate Academy,36,9,6
-137,Friendship PCS - Online Academy,84,29,22
-138,Friendship PCS - Armstrong Elementary,24,10,8
-139,Friendship PCS - Blow Pierce Elementary,24,8,8
-140,Friendship PCS - Blow Pierce Middle,72,26,10
-141,Friendship PCS - Chamberlain Elementary,24,10,4
-142,Friendship PCS - Chamberlain Middle,72,26,8
-143,Friendship PCS - Woodridge International Elementary,24,4,0
-144,Friendship PCS - Woodridge International Middle,72,23,4
-145,Hope Community PCS - Tolson,84,39,26
-146,Howard University Middle School of Mathematics and Science PCS,48,16,8
-147,Perry Street Preparatory PCS,90,34,20
-148,IDEA PCS,36,15,10
-149,KIPP DC - Honor Academy PCS,72,24,14
-150,KIPP DC - Legacy College Preparatory PCS,36,10,6
-151,KIPP DC - Promise Academy PCS,36,10,0
-152,KIPP DC - College Preparatory PCS,36,8,6
-153,KIPP DC - AIM Academy PCS,60,18,8
-154,KIPP DC - Inspire Academy PCS,24,9,4
-155,KIPP DC - WILL Academy PCS,60,16,8
-156,KIPP DC - KEY Academy PCS,60,14,8
-157,KIPP DC - Lead Academy PCS,36,12,12
-158,KIPP DC - Spring Academy PCS,36,12,10
-159,KIPP DC - Quest Academy PCS,36,12,12
-160,KIPP DC - Northeast Academy PCS,60,19,8
-161,KIPP DC - Valor Academy PCS,60,17,12
-162,KIPP DC - Heights Academy PCS,36,12,12
-163,Latin American Montessori Bilingual PCS,48,11,0
-164,Mary McLeod Bethune Day Academy PCS,84,37,24
-165,Maya Angelou PCS - High School,36,18,18
-166,Maya Angelou PCS - Academy at DC Jail,36,35,35
-167,Meridian PCS,84,28,14
-168,Paul PCS - Middle School,54,16,6
-169,Paul PCS - International High School,36,10,4
-170,Roots PCS,48,29,11
-171,SEED PCS of Washington DC,42,20,18
-172,Elsie Whitlow Stokes Community Freedom PCS - East End,24,8,4
-173,Elsie Whitlow Stokes Community Freedom PCS - Brookland,48,12,0
-174,Thurgood Marshall Academy PCS,36,16,12
-175,Two Rivers PCS - Young Middle School,48,6,0
-176,Two Rivers PCS - 4th Street,48,8,0
-177,Two Rivers PCS - Young Elementary School,48,6,0
-178,Washington Latin PCS - Upper School,42,13,0
-179,Washington Latin PCS - Middle School,72,23,0
-180,Achievement Preparatory Academy PCS - Wahler Place Elementary School,24,10,8
-181,Center City PCS - Brightwood,84,21,0
-182,Center City PCS - Capitol Hill,84,36,18
-183,Center City PCS - Congress Heights,84,24,0
-184,Center City PCS - Petworth,84,28,10
-185,Center City PCS - Shaw,84,30,0
-186,Center City PCS - Trinidad,84,31,12
-187,Washington Yu Ying PCS,48,6,0
-188,Inspired Teaching Demonstration PCS,90,10,0
-189,Shining Stars Montessori Academy PCS,60,31,10
-190,Richard Wright PCS for Journalism and Media Arts,48,18,10
-191,BASIS DC PCS,90,20,8
-192,Creative Minds International PCS,84,30,8
-193,DC Scholars PCS,84,38,32
-194,Mundo Verde Bilingual PCS - J.F. Cook,48,10,0
-195,Ingenuity Prep PCS,84,29,22
-196,Sela PCS,48,21,4
-197,Lee Montessori PCS - Brookland,60,27,4
-198,Harmony DC PCS - School of Excellence,48,24,18
-199,District of Columbia International School,78,6,0
-200,Monument Academy PCS,60,39,30
-201,Washington Global PCS,48,14,8
-202,Kingsman Academy PCS,72,63,63
-203,The Children's Guild DC PCS,84,50,40
-204,Breakthrough Montessori PCS,36,6,0
-205,Goodwill Excel Center PCS,36,34,33
-206,Rocketship PCS - Legacy Prep,48,18,14
-207,Rocketship PCS - Infinity Community Prep,24,9,4
-208,Rocketship PCS - Rise Academy,48,20,8
-209,Washington Leadership Academy PCS,42,19,8
-210,Statesmen College Preparatory  Academy for Boys PCS,60,27,22
-211,Digital Pioneers Academy PCS - Johenning,48,16,16
-212,Digital Pioneers Academy PCS - Capitol Hill,24,8,8
-213,The Sojourner Truth School PCS,54,15,0
-214,Capital Village PCS,48,26,10
-215,Girls Global Academy PCS,42,20,12
-216,I Dream PCS,24,24,24
-217,Social Justice PCS,48,18,10
-218,Maya Angelou Academy @ Youth Services Center,36,36,36
-219,Maya Angelou Academy at New Beginnings formerly Oak Hill,36,36,36
+School Name,Total Count,Missing Count Initial,Missing Count Final
+Bard High School Early College DC (Bard DC),36,11,6
+Ida B. Wells Middle School,60,14,6
+School-Within-School @ Goding,48,12,4
+Aiton Elementary School,48,21,4
+Amidon-Bowen Elementary School,48,12,0
+Bancroft Elementary School,48,4,0
+Barnard Elementary School,48,8,0
+Beers Elementary School,48,12,6
+Brent Elementary School,48,10,0
+Brightwood Elementary School,48,16,16
+Bunker Hill Elementary School,48,24,6
+Burroughs Elementary School,48,12,0
+Burrville Elementary School,48,18,8
+Cleveland Elementary School,48,14,4
+H.D. Cooke Elementary School,48,14,12
+Drew Elementary School,48,26,20
+Eaton Elementary School,48,8,4
+Garfield Elementary School,48,23,12
+Garrison Elementary School,48,4,0
+Hardy Middle School,60,9,0
+C.W. Harris Elementary School,48,21,12
+Hendley Elementary School,48,21,6
+Houston Elementary School,48,20,14
+Hyde-Addison Elementary School,48,8,0
+Janney Elementary School,48,20,16
+Ketcham Elementary School,48,19,8
+Hearst Elementary School,48,8,4
+Kimball Elementary School,48,18,14
+Lafayette Elementary School,48,0,0
+Langdon Elementary School,48,10,0
+LaSalle-Backus Elementary School,48,12,0
+Leckie Education Campus,84,34,28
+Ludlow-Taylor Elementary School,48,4,0
+Key Elementary School,48,10,8
+Mann Elementary School,48,8,4
+Maury Elementary School,48,2,0
+Miner Elementary School,48,19,12
+Marie Reed Elementary School,48,4,0
+Moten Elementary School,48,23,12
+Murch Elementary School,48,6,0
+Nalle Elementary School,48,21,14
+Noyes Elementary School,48,23,14
+Lawrence E. Boone Elementary School,48,24,20
+Oyster-Adams Bilingual School,90,21,8
+Patterson Elementary School,48,20,14
+Payne Elementary School,48,4,0
+Bruce-Monroe Elementary School @ Park View,48,6,0
+Plummer Elementary School,48,18,8
+Powell Elementary School,48,12,8
+Raymond Elementary School,48,12,6
+Ross Elementary School,48,15,8
+Savoy Elementary School,48,24,16
+Malcolm X Elementary School @ Green,48,24,20
+Seaton Elementary School,48,6,0
+Shepherd Elementary School,48,8,4
+Simon Elementary School,48,22,18
+Randle Highlands Elementary School,48,16,14
+Excel Academy,84,38,32
+Stanton Elementary School,48,21,14
+Stoddert Elementary School,48,10,8
+Smothers Elementary School,48,26,22
+Takoma Elementary School,48,8,0
+Thomas Elementary School,48,24,16
+Thomson Elementary School,48,6,0
+Truesdell Elementary School,48,10,10
+Tubman Elementary School,48,16,8
+Turner Elementary School,48,23,6
+Tyler Elementary School,48,6,0
+Van Ness Elementary School,48,10,4
+Walker-Jones Education Campus,84,36,26
+Watkins Elementary School (Capitol Hill Cluster),48,4,0
+Wheatley Education Campus,84,37,26
+John Lewis Elementary School,48,6,0
+Whittier Elementary School,48,16,0
+J.O. Wilson Elementary School,48,12,6
+King Elementary School,48,22,10
+Brookland Middle School,54,17,14
+Dorothy I. Height Elementary School,48,8,0
+Capitol Hill Montessori School @ Logan,84,21,0
+Langley Elementary School,48,21,12
+Benjamin Banneker High School,42,17,6
+Browne Education Campus,90,44,34
+Deal Middle School,60,5,0
+Eliot-Hine Middle School,54,15,10
+School Without Walls @ Francis-Stevens,90,14,4
+Hart Middle School,54,17,14
+Johnson Middle School,54,28,14
+Kramer Middle School,54,30,22
+MacFarland Middle School,54,16,10
+Kelly Miller Middle School,54,22,18
+Sousa Middle School,60,31,26
+Stuart-Hobson Middle School (Capitol Hill Cluster),60,6,0
+Jefferson Middle School Academy,54,7,0
+McKinley Middle School,54,18,18
+Ron Brown College Preparatory High School,36,17,10
+Columbia Heights Education Campus,72,12,10
+Anacostia High School,36,18,10
+Ballou High School,36,18,18
+Cardozo Education Campus,78,32,16
+Coolidge High School,36,10,6
+Roosevelt STAY High School,36,25,22
+Eastern High School,36,8,6
+McKinley Technology High School,42,14,4
+Roosevelt High School,42,13,6
+Ballou STAY High School,36,32,30
+Woodrow Wilson High School,42,9,4
+H.D. Woodson High School,36,15,10
+School Without Walls High School,42,18,8
+Dunbar High School,36,9,6
+Duke Ellington School of the Arts,42,13,8
+"Phelps Architecture, Construction and Engineering High School",42,15,8
+Luke C. Moore High School,36,34,34
+Bridges PCS,48,16,0
+Capital City PCS - High School,36,16,6
+Capital City PCS - Middle School,66,19,10
+Capital City PCS - Lower School,36,12,10
+Cesar Chavez Public Charter Schools for Public Policy,60,17,10
+DC Bilingual PCS,48,6,0
+DC Prep PCS - Benning Elementary School,24,8,8
+DC Prep PCS - Anacostia Middle School,36,14,12
+DC Prep PCS - Edgewood Elementary School,24,8,0
+DC Prep PCS - Edgewood Middle School,72,14,0
+DC Prep PCS - Benning Middle School,72,18,10
+DC Prep PCS - Anacostia Elementary School,24,8,8
+E.L. Haynes PCS - High School,36,8,6
+E.L. Haynes PCS - Elementary School,36,8,6
+E.L. Haynes PCS - Middle School,72,22,22
+Eagle Academy PCS - Capitol Riverfront,24,14,12
+Eagle Academy PCS - Congress Heights,24,12,12
+Early Childhood Academy PCS,24,8,8
+Friendship PCS - Southeast Middle,72,27,18
+Friendship PCS - Ideal Elementary,24,8,8
+Friendship PCS - Ideal Middle,72,27,20
+Friendship PCS - Southeast Elementary,24,8,4
+Friendship PCS - Armstrong Middle,72,29,20
+Friendship PCS - Technology Preparatory High School,36,13,10
+Friendship PCS - Collegiate Academy,36,9,6
+Friendship PCS - Online Academy,84,29,22
+Friendship PCS - Armstrong Elementary,24,10,8
+Friendship PCS - Blow Pierce Elementary,24,8,8
+Friendship PCS - Blow Pierce Middle,72,26,10
+Friendship PCS - Chamberlain Elementary,24,10,4
+Friendship PCS - Chamberlain Middle,72,26,8
+Friendship PCS - Woodridge International Elementary,24,4,0
+Friendship PCS - Woodridge International Middle,72,23,4
+Hope Community PCS - Tolson,84,39,26
+Howard University Middle School of Mathematics and Science PCS,48,16,8
+Perry Street Preparatory PCS,90,34,20
+IDEA PCS,36,15,10
+KIPP DC - Honor Academy PCS,72,24,14
+KIPP DC - Legacy College Preparatory PCS,36,10,6
+KIPP DC - Promise Academy PCS,36,10,0
+KIPP DC - College Preparatory PCS,36,8,6
+KIPP DC - AIM Academy PCS,60,18,8
+KIPP DC - Inspire Academy PCS,24,9,4
+KIPP DC - WILL Academy PCS,60,16,8
+KIPP DC - KEY Academy PCS,60,14,8
+KIPP DC - Lead Academy PCS,36,12,12
+KIPP DC - Spring Academy PCS,36,12,10
+KIPP DC - Quest Academy PCS,36,12,12
+KIPP DC - Northeast Academy PCS,60,19,8
+KIPP DC - Valor Academy PCS,60,17,12
+KIPP DC - Heights Academy PCS,36,12,12
+Latin American Montessori Bilingual PCS,48,11,0
+Mary McLeod Bethune Day Academy PCS,84,37,24
+Maya Angelou PCS - High School,36,18,18
+Maya Angelou PCS - Academy at DC Jail,36,35,35
+Meridian PCS,84,28,14
+Paul PCS - Middle School,54,16,6
+Paul PCS - International High School,36,10,4
+Roots PCS,48,29,11
+SEED PCS of Washington DC,42,20,18
+Elsie Whitlow Stokes Community Freedom PCS - East End,24,8,4
+Elsie Whitlow Stokes Community Freedom PCS - Brookland,48,12,0
+Thurgood Marshall Academy PCS,36,16,12
+Two Rivers PCS - Young Middle School,48,6,0
+Two Rivers PCS - 4th Street,48,8,0
+Two Rivers PCS - Young Elementary School,48,6,0
+Washington Latin PCS - Upper School,42,13,0
+Washington Latin PCS - Middle School,72,23,0
+Achievement Preparatory Academy PCS - Wahler Place Elementary School,24,10,8
+Center City PCS - Brightwood,84,21,0
+Center City PCS - Capitol Hill,84,36,18
+Center City PCS - Congress Heights,84,24,0
+Center City PCS - Petworth,84,28,10
+Center City PCS - Shaw,84,30,0
+Center City PCS - Trinidad,84,31,12
+Washington Yu Ying PCS,48,6,0
+Inspired Teaching Demonstration PCS,90,10,0
+Shining Stars Montessori Academy PCS,60,31,10
+Richard Wright PCS for Journalism and Media Arts,48,18,10
+BASIS DC PCS,90,20,8
+Creative Minds International PCS,84,30,8
+DC Scholars PCS,84,38,32
+Mundo Verde Bilingual PCS - J.F. Cook,48,10,0
+Ingenuity Prep PCS,84,29,22
+Sela PCS,48,21,4
+Lee Montessori PCS - Brookland,60,27,4
+Harmony DC PCS - School of Excellence,48,24,18
+District of Columbia International School,78,6,0
+Monument Academy PCS,60,39,30
+Washington Global PCS,48,14,8
+Kingsman Academy PCS,72,63,63
+The Children's Guild DC PCS,84,50,40
+Breakthrough Montessori PCS,36,6,0
+Goodwill Excel Center PCS,36,34,33
+Rocketship PCS - Legacy Prep,48,18,14
+Rocketship PCS - Infinity Community Prep,24,9,4
+Rocketship PCS - Rise Academy,48,20,8
+Washington Leadership Academy PCS,42,19,8
+Statesmen College Preparatory  Academy for Boys PCS,60,27,22
+Digital Pioneers Academy PCS - Johenning,48,16,16
+Digital Pioneers Academy PCS - Capitol Hill,24,8,8
+The Sojourner Truth School PCS,54,15,0
+Capital Village PCS,48,26,10
+Girls Global Academy PCS,42,20,12
+I Dream PCS,24,24,24
+Social Justice PCS,48,18,10
+Maya Angelou Academy @ Youth Services Center,36,36,36
+Maya Angelou Academy at New Beginnings formerly Oak Hill,36,36,36

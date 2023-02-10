@@ -32,3 +32,4 @@ Tabs: "Proficiency", "Performance Level"
 Outputs:
 
 ELA_initial.pkl and Math_initial_pkl - files with some light cleaning done (substution of -1s for missing values)
+Missing Count by School, Before and After.csv : this summarizes the number of Count values that were missing at the beginning and at the end. (We're only looking for values for PARCC at the grade- and school-level for both proficieny and levels)

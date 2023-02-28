@@ -1,6 +1,9 @@
 # reIdentifyingPARCCData
 
-This un-redacts some of the missing data in the '[5] 2021-22 School Level PARCC and MSAA Data.xlsx' (no longer available) focusing on grade- and school-level PARCC data for both Profiency and Levels.
+
+**The data set this runs on is no longer publicly available; this is offered for illustrative purposes.**
+
+This un-redacts some of the missing data in the '[5] 2021-22 School Level PARCC and MSAA Data.xlsx' focusing on grade- and school-level PARCC data for both Profiency and Levels. 
 
 The strategies here are:
 

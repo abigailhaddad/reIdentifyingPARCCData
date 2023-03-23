@@ -6,7 +6,7 @@ For more about this project, see: https://blog.capitaltg.com/inferring-hidden-da
 
 This un-redacts some of the missing data in the '[5] 2021-22 School Level PARCC and MSAA Data.xlsx' focusing on grade- and school-level PARCC data for both Profiency and Levels. 
 
-The strategies here are:
+### The strategies here are:
 
   #1. Fill in missing 'Total Count' data at the grade- and school-level using non-missing data, because Total Count is the same within grade but across levels/proficiency.
   
@@ -16,7 +16,7 @@ The strategies here are:
   
   #4. Iterate through remaining missing values to see if there's only one possible solution for remaining variables. (This is sometimes the case because Sympy is not good at using the fact that every variable here must be a non-negative integer, so sometimes just setting up all unsolved equations as >=0 and iterating through all possible options finds an answer.)
   
-The two things that add a lot of time to run are:
+### The two things that add a lot of time to run are:
 
   #1. Generating a lot of SymPy symbols
   
@@ -33,12 +33,12 @@ If you needed more variables, you'd go later in the alphabet. (for instance, if 
 The second issue, we control via the maxSymbolsForIteration parameter. If you set that higher, it will attempt to solve (and in some cases, solve) unsolved count variables for schools with more data that's still unsolved after trying to solve it mathematically via
 SymPy-- but because it's iterating through every possible option, if you set this higher, it will take a really long time to run -- much longer than everything else combined.
 
-Inputs:
+### Inputs:
 
 File: '[5] 2021-22 School Level PARCC and MSAA Data.xlsx'
 Tabs: "Proficiency", "Performance Level"
 
-Outputs:
+### Outputs:
 
 ELA_initial.pkl and Math_initial_pkl - files with some light cleaning done (substution of -1s for missing values)
 

@@ -1,5 +1,6 @@
 # reIdentifyingPARCCData
 
+For more about this project, see: https://blog.capitaltg.com/inferring-hidden-data-by-solving-linear-equations-in-python/
 
 **The data set this runs on is no longer publicly available; this is offered for illustrative purposes.**
 

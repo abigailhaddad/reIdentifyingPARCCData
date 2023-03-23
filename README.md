@@ -27,8 +27,8 @@ The first issue, we control in the function replaceWithSymbolsAndGenerateEquatio
 The line that controls the number of variables creates is:
 
 AthroughD=[i for i in keywords if i[0]=="a" or i[0]=="b" or i[0]=="c" or i[0]=="d"]
-If you needed more variables, you'd go later in the alphabet. (for instance, if we wanted to add in functionality for looking at all the subgroup missing data, which this code currently drops)
 
+If you needed more variables, you'd go later in the alphabet. (for instance, if we wanted to add in functionality for looking at all the subgroup missing data, which this code currently drops)
     
 The second issue, we control via the maxSymbolsForIteration parameter. If you set that higher, it will attempt to solve (and in some cases, solve) unsolved count variables for schools with more data that's still unsolved after trying to solve it mathematically via
 SymPy-- but because it's iterating through every possible option, if you set this higher, it will take a really long time to run -- much longer than everything else combined.
